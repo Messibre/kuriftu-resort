@@ -1,17 +1,23 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { DashboardHeader } from "@/components/dashboard-header"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import * as React from "react";
+import { DashboardHeader } from "@/components/dashboard-header";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   TrendingUp,
   TrendingDown,
@@ -22,7 +28,7 @@ import {
   Calculator,
   Percent,
   RefreshCw,
-} from "lucide-react"
+} from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -36,111 +42,202 @@ import {
   XAxis,
   YAxis,
   Legend,
-} from "recharts"
+} from "recharts";
+import { getRevenueDataset, type RevenueDailyData } from "@/lib/revenue-api";
 
-// Mock data for different time ranges
-const dailyOccupancyData = [
-  { date: "Mar 26", actual: 72, predicted: 70 },
-  { date: "Mar 27", actual: 75, predicted: 73 },
-  { date: "Mar 28", actual: 68, predicted: 72 },
-  { date: "Mar 29", actual: 80, predicted: 78 },
-  { date: "Mar 30", actual: 85, predicted: 82 },
-  { date: "Mar 31", actual: 88, predicted: 85 },
-  { date: "Apr 1", actual: 92, predicted: 90 },
-]
+function formatCurrency(value: number): string {
+  return `ETB ${value.toLocaleString(undefined, {
+    maximumFractionDigits: 0,
+  })}`;
+}
 
-const weeklyOccupancyData = [
-  { week: "Week 1", actual: 72, predicted: 70 },
-  { week: "Week 2", actual: 78, predicted: 76 },
-  { week: "Week 3", actual: 75, predicted: 77 },
-  { week: "Week 4", actual: 82, predicted: 80 },
-]
+function formatPercent(value: number): string {
+  return `${value.toFixed(1)}%`;
+}
 
-const revenueData = [
-  { date: "Mar 26", adr: 145, revpar: 104 },
-  { date: "Mar 27", adr: 152, revpar: 114 },
-  { date: "Mar 28", adr: 148, revpar: 101 },
-  { date: "Mar 29", adr: 155, revpar: 124 },
-  { date: "Mar 30", adr: 160, revpar: 136 },
-  { date: "Mar 31", adr: 165, revpar: 145 },
-  { date: "Apr 1", adr: 170, revpar: 156 },
-]
+function formatShortDate(dateString: string): string {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
 
-const kpiData = [
-  {
-    title: "Occupancy Rate",
-    value: "78%",
-    predicted: "76%",
-    change: "+2.6%",
-    trend: "up",
-    icon: Bed,
-    description: "Actual vs Predicted",
-  },
-  {
-    title: "ADR (Avg Daily Rate)",
-    value: "$156",
-    predicted: "$150",
-    change: "+4.0%",
-    trend: "up",
-    icon: DollarSign,
-    description: "Actual vs Predicted",
-  },
-  {
-    title: "RevPAR",
-    value: "$122",
-    predicted: "$114",
-    change: "+7.0%",
-    trend: "up",
-    icon: Target,
-    description: "Revenue per room",
-  },
-  {
-    title: "Labor Cost %",
-    value: "28%",
-    predicted: "30%",
-    change: "-2.0%",
-    trend: "up",
-    icon: Users,
-    description: "% of revenue",
-  },
-  {
-    title: "Forecast Accuracy",
-    value: "94.2%",
-    predicted: "MAPE: 5.8%",
-    change: "+1.2%",
-    trend: "up",
-    icon: Calculator,
-    description: "Prediction accuracy",
-  },
-  {
-    title: "Cost Savings",
-    value: "$12,400",
-    predicted: "This month",
-    change: "+18%",
-    trend: "up",
-    icon: Percent,
-    description: "From optimization",
-  },
-]
+function buildWeeklyOccupancy(data: RevenueDailyData[]) {
+  const weeks: { week: string; actual: number; predicted: number }[] = [];
 
-const sparklineData = [
-  { value: 65 },
-  { value: 72 },
-  { value: 68 },
-  { value: 75 },
-  { value: 78 },
-  { value: 82 },
-  { value: 78 },
-]
+  for (let i = 0; i < data.length; i += 7) {
+    const chunk = data.slice(i, i + 7);
+    const actualValues = chunk
+      .map((item) => item.actual_occupancy)
+      .filter((value): value is number => value !== null);
+
+    const predictedValues = chunk.map((item) => item.predicted_occupancy);
+
+    const actualAvg =
+      actualValues.length > 0
+        ? actualValues.reduce((sum, value) => sum + value, 0) /
+          actualValues.length
+        : 0;
+    const predictedAvg =
+      predictedValues.length > 0
+        ? predictedValues.reduce((sum, value) => sum + value, 0) /
+          predictedValues.length
+        : 0;
+
+    weeks.push({
+      week: `Week ${weeks.length + 1}`,
+      actual: Number(actualAvg.toFixed(2)),
+      predicted: Number(predictedAvg.toFixed(2)),
+    });
+  }
+
+  return weeks;
+}
 
 export default function RevenuePage() {
-  const [dateRange, setDateRange] = React.useState("7d")
-  const [isRefreshing, setIsRefreshing] = React.useState(false)
+  const [dateRange, setDateRange] = React.useState("30d");
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [hasError, setHasError] = React.useState(false);
+  const [dataset, setDataset] = React.useState<Awaited<
+    ReturnType<typeof getRevenueDataset>
+  > | null>(null);
+
+  const loadData = React.useCallback(async () => {
+    setIsLoading(true);
+    setHasError(false);
+
+    try {
+      const data = await getRevenueDataset(
+        (dateRange === "7d" || dateRange === "30d" || dateRange === "90d"
+          ? dateRange
+          : "90d") as "7d" | "30d" | "90d",
+      );
+      setDataset(data);
+    } catch {
+      setHasError(true);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [dateRange]);
+
+  React.useEffect(() => {
+    void loadData();
+  }, [loadData]);
 
   const handleRefresh = () => {
-    setIsRefreshing(true)
-    setTimeout(() => setIsRefreshing(false), 1000)
-  }
+    setIsRefreshing(true);
+    void loadData();
+  };
+
+  const dailyOccupancyData = React.useMemo(() => {
+    return (dataset?.dailyData ?? []).map((item) => ({
+      date: formatShortDate(item.date),
+      actual: item.actual_occupancy,
+      predicted: item.predicted_occupancy,
+    }));
+  }, [dataset]);
+
+  const weeklyOccupancyData = React.useMemo(() => {
+    return buildWeeklyOccupancy(dataset?.dailyData ?? []);
+  }, [dataset]);
+
+  const revenueData = React.useMemo(() => {
+    return (dataset?.dailyData ?? []).map((item) => ({
+      date: formatShortDate(item.date),
+      adr: item.adr,
+      revpar: item.revpar,
+    }));
+  }, [dataset]);
+
+  const laborCostData = React.useMemo(() => {
+    return (dataset?.dailyData ?? []).map((item) => ({
+      date: formatShortDate(item.date),
+      housekeeping: item.labor_housekeeping ?? 0,
+      frontDesk: item.labor_front_desk ?? 0,
+      fAndB: item.labor_f_b ?? 0,
+      maintenance: item.labor_maintenance ?? 0,
+    }));
+  }, [dataset]);
+
+  const sparklineData = React.useMemo(() => {
+    const source = dataset?.dailyData ?? [];
+    if (source.length === 0) {
+      return [{ value: 0 }];
+    }
+    return source.map((item) => ({
+      value: item.actual_occupancy ?? item.predicted_occupancy,
+    }));
+  }, [dataset]);
+
+  const kpiData = React.useMemo(() => {
+    const summary = dataset?.summary;
+    if (!summary) {
+      return [
+        {
+          title: "Total Revenue",
+          value: "--",
+          predicted: "Last selected period",
+          change: "--",
+          trend: "up" as const,
+          icon: DollarSign,
+        },
+      ];
+    }
+
+    return [
+      {
+        title: "Total Revenue",
+        value: formatCurrency(summary.total_revenue),
+        predicted: "Last selected period",
+        change: formatPercent(summary.average_occupancy),
+        trend: "up" as const,
+        icon: DollarSign,
+      },
+      {
+        title: "Average ADR",
+        value: formatCurrency(summary.average_adr),
+        predicted: "Average daily rate",
+        change: formatCurrency(summary.average_revpar),
+        trend: "up" as const,
+        icon: Target,
+      },
+      {
+        title: "Average Occupancy",
+        value: formatPercent(summary.average_occupancy),
+        predicted: "Actual and forecast blend",
+        change: formatPercent(summary.average_occupancy),
+        trend: "up" as const,
+        icon: Bed,
+      },
+      {
+        title: "RevPAR",
+        value: formatCurrency(summary.average_revpar),
+        predicted: "Revenue per available room",
+        change: formatCurrency(summary.average_revpar),
+        trend: "up" as const,
+        icon: TrendingUp,
+      },
+      {
+        title: "Labor Cost %",
+        value: formatPercent(summary.labor_cost_percent),
+        predicted: "% of total revenue",
+        change: formatPercent(summary.labor_cost_percent),
+        trend: "up" as const,
+        icon: Users,
+      },
+      {
+        title: "Forecast Accuracy (MAPE)",
+        value: formatPercent(summary.forecast_accuracy_mape),
+        predicted: "Lower is better",
+        change: formatPercent(dataset?.mape7 ?? 0),
+        trend: "down" as const,
+        icon: Calculator,
+      },
+    ];
+  }, [dataset]);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -150,6 +247,14 @@ export default function RevenuePage() {
       />
       <main className="flex-1 overflow-auto p-4 lg:p-6">
         <div className="flex flex-col gap-6">
+          {hasError ? (
+            <Card className="border-destructive/40">
+              <CardContent className="p-4 text-sm text-destructive">
+                Failed to load revenue data. Please refresh the page.
+              </CardContent>
+            </Card>
+          ) : null}
+
           {/* Controls */}
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -177,7 +282,8 @@ export default function RevenuePage() {
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">
-              Data source: daily_occupancy, forecast, staff_schedule, approved_pricing
+              Data source: revenue dashboard, daily occupancy, forecast, pricing
+              approvals
             </p>
           </div>
 
@@ -197,21 +303,41 @@ export default function RevenuePage() {
                     {kpi.trend === "up" ? (
                       <TrendingUp className="size-3 text-primary" />
                     ) : (
-                      <TrendingDown className="size-3 text-destructive" />
+                      <TrendingDown className="size-3 text-amber-600" />
                     )}
-                    <span className={kpi.trend === "up" ? "text-primary" : "text-destructive"}>
+                    <span
+                      className={
+                        kpi.trend === "up" ? "text-primary" : "text-amber-600"
+                      }
+                    >
                       {kpi.change}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{kpi.predicted}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {kpi.predicted}
+                  </p>
                   {/* Mini sparkline */}
                   <div className="mt-2 h-8">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={sparklineData}>
                         <defs>
-                          <linearGradient id={`spark-${kpi.title}`} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="hsl(142 76% 36%)" stopOpacity={0.3} />
-                            <stop offset="100%" stopColor="hsl(142 76% 36%)" stopOpacity={0} />
+                          <linearGradient
+                            id={`spark-${kpi.title}`}
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop
+                              offset="0%"
+                              stopColor="hsl(142 76% 36%)"
+                              stopOpacity={0.3}
+                            />
+                            <stop
+                              offset="100%"
+                              stopColor="hsl(142 76% 36%)"
+                              stopOpacity={0}
+                            />
                           </linearGradient>
                         </defs>
                         <Area
@@ -235,6 +361,7 @@ export default function RevenuePage() {
               <TabsTrigger value="occupancy">Occupancy</TabsTrigger>
               <TabsTrigger value="revenue">Revenue Metrics</TabsTrigger>
               <TabsTrigger value="comparison">Actual vs Predicted</TabsTrigger>
+              <TabsTrigger value="labor">Labor Cost</TabsTrigger>
             </TabsList>
 
             <TabsContent value="occupancy" className="space-y-4">
@@ -242,13 +369,18 @@ export default function RevenuePage() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Daily Occupancy Trend</CardTitle>
-                    <CardDescription>Occupancy rate over selected period</CardDescription>
+                    <CardDescription>
+                      Occupancy rate over selected period
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={dailyOccupancyData}>
-                          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            className="stroke-border"
+                          />
                           <XAxis
                             dataKey="date"
                             tick={{ fontSize: 12 }}
@@ -295,13 +427,18 @@ export default function RevenuePage() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Weekly Comparison</CardTitle>
-                    <CardDescription>Actual vs Predicted by week</CardDescription>
+                    <CardDescription>
+                      Actual vs Predicted by week
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={weeklyOccupancyData}>
-                          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            className="stroke-border"
+                          />
                           <XAxis
                             dataKey="week"
                             tick={{ fontSize: 12 }}
@@ -345,23 +482,56 @@ export default function RevenuePage() {
               <Card>
                 <CardHeader>
                   <CardTitle>ADR & RevPAR Trends</CardTitle>
-                  <CardDescription>Average Daily Rate and Revenue per Available Room</CardDescription>
+                  <CardDescription>
+                    Average Daily Rate and Revenue per Available Room
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="h-[350px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={revenueData}>
                         <defs>
-                          <linearGradient id="adrGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(142 76% 36%)" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="hsl(142 76% 36%)" stopOpacity={0} />
+                          <linearGradient
+                            id="adrGradient"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop
+                              offset="5%"
+                              stopColor="hsl(142 76% 36%)"
+                              stopOpacity={0.3}
+                            />
+                            <stop
+                              offset="95%"
+                              stopColor="hsl(142 76% 36%)"
+                              stopOpacity={0}
+                            />
                           </linearGradient>
-                          <linearGradient id="revparGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(142 76% 50%)" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="hsl(142 76% 50%)" stopOpacity={0} />
+                          <linearGradient
+                            id="revparGradient"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop
+                              offset="5%"
+                              stopColor="hsl(142 76% 50%)"
+                              stopOpacity={0.3}
+                            />
+                            <stop
+                              offset="95%"
+                              stopColor="hsl(142 76% 50%)"
+                              stopOpacity={0}
+                            />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          className="stroke-border"
+                        />
                         <XAxis
                           dataKey="date"
                           tick={{ fontSize: 12 }}
@@ -408,13 +578,18 @@ export default function RevenuePage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Forecast Accuracy Analysis</CardTitle>
-                  <CardDescription>Comparing predicted vs actual performance</CardDescription>
+                  <CardDescription>
+                    Comparing predicted vs actual performance
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="h-[350px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={dailyOccupancyData} barGap={0}>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          className="stroke-border"
+                        />
                         <XAxis
                           dataKey="date"
                           tick={{ fontSize: 12 }}
@@ -457,9 +632,11 @@ export default function RevenuePage() {
                 <Card>
                   <CardContent className="pt-6">
                     <div className="text-center">
-                      <div className="text-3xl font-bold text-primary">94.2%</div>
+                      <div className="text-3xl font-bold text-primary">
+                        {formatPercent(dataset?.mape7 ?? 0)}
+                      </div>
                       <div className="mt-1 text-sm text-muted-foreground">
-                        Overall Forecast Accuracy
+                        MAPE (Last 7 days)
                       </div>
                     </div>
                   </CardContent>
@@ -467,9 +644,11 @@ export default function RevenuePage() {
                 <Card>
                   <CardContent className="pt-6">
                     <div className="text-center">
-                      <div className="text-3xl font-bold">5.8%</div>
+                      <div className="text-3xl font-bold">
+                        {formatPercent(dataset?.mape30 ?? 0)}
+                      </div>
                       <div className="mt-1 text-sm text-muted-foreground">
-                        Mean Absolute Percentage Error
+                        MAPE (Last 30 days)
                       </div>
                     </div>
                   </CardContent>
@@ -477,18 +656,113 @@ export default function RevenuePage() {
                 <Card>
                   <CardContent className="pt-6">
                     <div className="text-center">
-                      <div className="text-3xl font-bold text-primary">+2.4%</div>
+                      <div className="text-3xl font-bold text-primary">
+                        {formatPercent(dataset?.within10PctDays ?? 0)}
+                      </div>
                       <div className="mt-1 text-sm text-muted-foreground">
-                        Average Outperformance
+                        Days within 10% error
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Estimated Cost Savings</CardTitle>
+                  <CardDescription>
+                    AI staffing vs fixed staffing model
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-primary">
+                    {formatCurrency(dataset?.summary.estimated_savings ?? 0)}
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Estimated savings this period
+                  </p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="labor" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Daily Labor Cost by Department</CardTitle>
+                  <CardDescription>
+                    Stacked labor cost by housekeeping, front desk, F&B, and
+                    maintenance
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[350px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={laborCostData}>
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          className="stroke-border"
+                        />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fontSize: 12 }}
+                          className="fill-muted-foreground"
+                        />
+                        <YAxis
+                          tick={{ fontSize: 12 }}
+                          className="fill-muted-foreground"
+                          tickFormatter={(value) => `ETB ${value}`}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "8px",
+                          }}
+                          formatter={(value: number) => [
+                            `ETB ${value.toLocaleString()}`,
+                            "",
+                          ]}
+                        />
+                        <Legend />
+                        <Bar
+                          dataKey="housekeeping"
+                          stackId="labor"
+                          fill="hsl(142 76% 36%)"
+                          name="Housekeeping"
+                        />
+                        <Bar
+                          dataKey="frontDesk"
+                          stackId="labor"
+                          fill="hsl(160 84% 39%)"
+                          name="Front Desk"
+                        />
+                        <Bar
+                          dataKey="fAndB"
+                          stackId="labor"
+                          fill="hsl(172 66% 50%)"
+                          name="F&B"
+                        />
+                        <Bar
+                          dataKey="maintenance"
+                          stackId="labor"
+                          fill="hsl(184 75% 39%)"
+                          name="Maintenance"
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
+
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">
+              Loading revenue data...
+            </p>
+          ) : null}
         </div>
       </main>
     </div>
-  )
+  );
 }
