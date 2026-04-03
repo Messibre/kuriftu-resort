@@ -9,340 +9,384 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { toast } from "@/hooks/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import {
-  Settings,
   Bell,
-  Shield,
   Database,
-  Palette,
-  Mail,
-  Keyboard,
-  User,
   Building,
+  RefreshCcw,
+  Plus,
+  Trash2,
+  Activity,
   Save,
 } from "lucide-react"
+import {
+  downloadBackup,
+  getAdminSettings,
+  getNotificationPreferences,
+  getStaffingRatios,
+  getSystemHealth,
+  updateAdminSettings,
+  updateNotificationPreferences,
+  updateStaffingRatios,
+  type NotificationPreference,
+  type StaffingRatio,
+} from "@/lib/settings-api"
+
+type HealthMap = Record<string, { status: string; message: string }>
+
+const NOTIFICATION_TYPES = [
+  "schedule_published",
+  "peak_demand_alert",
+  "feedback_negative",
+  "override_confirmation",
+  "low_occupancy_alert",
+]
 
 export default function SettingsPage() {
-  const [emailNotifications, setEmailNotifications] = React.useState(true)
-  const [pushNotifications, setPushNotifications] = React.useState(true)
-  const [scheduleAlerts, setScheduleAlerts] = React.useState(true)
-  const [feedbackAlerts, setFeedbackAlerts] = React.useState(true)
-  const [autoBackup, setAutoBackup] = React.useState(true)
+  const { toast } = useToast()
 
-  const handleSave = () => {
-    toast({
-      title: "Settings saved",
-      description: "Your preferences have been updated successfully.",
+  const [settings, setSettings] = React.useState<Record<string, unknown>>({})
+  const [ratios, setRatios] = React.useState<StaffingRatio[]>([])
+  const [preferences, setPreferences] = React.useState<NotificationPreference[]>([])
+  const [health, setHealth] = React.useState<HealthMap>({})
+  const [isLoading, setIsLoading] = React.useState(true)
+  const [isSaving, setIsSaving] = React.useState(false)
+  const [isBackingUp, setIsBackingUp] = React.useState(false)
+
+  const loadAll = React.useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const [nextSettings, nextRatios, nextPrefs, nextHealth] = await Promise.all([
+        getAdminSettings(),
+        getStaffingRatios(),
+        getNotificationPreferences(),
+        getSystemHealth(),
+      ])
+      setSettings(nextSettings)
+      setRatios(nextRatios)
+      setPreferences(nextPrefs)
+      setHealth(nextHealth)
+    } catch {
+      toast({
+        title: "Failed to load settings",
+        description: "Please refresh and try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }, [toast])
+
+  React.useEffect(() => {
+    void loadAll()
+  }, [loadAll])
+
+  const updateSetting = (key: string, value: unknown) => {
+    setSettings((current) => ({ ...current, [key]: value }))
+  }
+
+  const upsertPreference = (notificationType: string, enabled: boolean) => {
+    setPreferences((current) => {
+      const index = current.findIndex((item) => item.notification_type === notificationType)
+      if (index === -1) {
+        return [
+          ...current,
+          {
+            notification_type: notificationType,
+            is_enabled: enabled,
+            channel: "in_app",
+          },
+        ]
+      }
+
+      const next = [...current]
+      next[index] = { ...next[index], is_enabled: enabled }
+      return next
     })
+  }
+
+  const saveAll = async () => {
+    setIsSaving(true)
+    try {
+      await Promise.all([
+        updateAdminSettings(settings),
+        updateStaffingRatios(ratios),
+        updateNotificationPreferences(preferences),
+      ])
+      toast({
+        title: "Settings saved",
+        description: "Your updates were applied successfully.",
+      })
+      await loadAll()
+    } catch {
+      toast({
+        title: "Failed to save settings",
+        description: "Please review your values and try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const addRatioRow = () => {
+    setRatios((current) => [
+      ...current,
+      {
+        department: "",
+        guest_ratio: 10,
+        min_staff: 1,
+        max_staff: null,
+        is_active: true,
+      },
+    ])
+  }
+
+  const updateRatio = (index: number, next: Partial<StaffingRatio>) => {
+    setRatios((current) => {
+      const copy = [...current]
+      copy[index] = { ...copy[index], ...next }
+      return copy
+    })
+  }
+
+  const removeRatio = (index: number) => {
+    setRatios((current) => current.filter((_, i) => i !== index))
+  }
+
+  const runBackup = async () => {
+    setIsBackingUp(true)
+    try {
+      const blob = await downloadBackup()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `resort-backup-${new Date().toISOString().slice(0, 10)}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+      toast({ title: "Backup downloaded" })
+    } catch {
+      toast({
+        title: "Backup failed",
+        description: "Please try again in a few moments.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsBackingUp(false)
+    }
   }
 
   return (
     <div className="flex flex-1 flex-col">
-      <DashboardHeader
-        title="Settings"
-        breadcrumbs={[{ label: "Settings" }]}
-      />
+      <DashboardHeader title="Settings" breadcrumbs={[{ label: "Settings" }]} />
       <main className="flex-1 overflow-auto p-4 lg:p-6">
         <div className="mx-auto max-w-4xl space-y-6">
-          {/* Profile Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="size-5 text-primary" />
-                Profile Settings
-              </CardTitle>
-              <CardDescription>
-                Manage your account information
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" defaultValue="Admin User" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input id="email" type="email" defaultValue="admin@resort.com" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <div className="flex items-center gap-2">
-                  <Input id="role" defaultValue="Administrator" disabled />
-                  <Badge className="bg-primary">Admin</Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Resort Settings */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Building className="size-5 text-primary" />
-                Resort Information
-              </CardTitle>
-              <CardDescription>
-                Configure your resort details
+                Resort Configuration
               </CardDescription>
+              <CardDescription>Core forecast and business settings</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {isLoading ? <p className="text-sm text-muted-foreground">Loading settings...</p> : null}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="resort-name">Resort Name</Label>
-                  <Input id="resort-name" defaultValue="Paradise Beach Resort" />
+                  <Label htmlFor="total-rooms">Total Rooms</Label>
+                  <Input
+                    id="total-rooms"
+                    value={String(settings.total_rooms ?? "")}
+                    onChange={(event) => updateSetting("total_rooms", event.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="timezone">Timezone</Label>
-                  <Select defaultValue="america-new-york">
-                    <SelectTrigger id="timezone">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="america-new-york">Eastern Time (ET)</SelectItem>
-                      <SelectItem value="america-chicago">Central Time (CT)</SelectItem>
-                      <SelectItem value="america-denver">Mountain Time (MT)</SelectItem>
-                      <SelectItem value="america-los-angeles">Pacific Time (PT)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="currency">Default Currency</Label>
+                  <Input
+                    id="currency"
+                    value={String(settings.default_currency ?? "")}
+                    onChange={(event) => updateSetting("default_currency", event.target.value)}
+                  />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="currency">Currency</Label>
-                <Select defaultValue="usd">
-                  <SelectTrigger id="currency" className="w-[200px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="usd">USD ($)</SelectItem>
-                    <SelectItem value="eur">EUR</SelectItem>
-                    <SelectItem value="gbp">GBP</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="forecast">Forecast Horizon (days)</Label>
+                  <Input
+                    id="forecast"
+                    value={String(settings.forecast_horizon_days ?? "")}
+                    onChange={(event) => updateSetting("forecast_horizon_days", event.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="weekend">Weekend Days (comma separated)</Label>
+                  <Input
+                    id="weekend"
+                    value={Array.isArray(settings.weekend_days) ? settings.weekend_days.join(", ") : ""}
+                    onChange={(event) =>
+                      updateSetting(
+                        "weekend_days",
+                        event.target.value.split(",").map((item) => item.trim()).filter(Boolean),
+                      )
+                    }
+                  />
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="peak">Peak Demand Threshold (%)</Label>
+                  <Input
+                    id="peak"
+                    value={String(settings.peak_demand_threshold ?? "")}
+                    onChange={(event) => updateSetting("peak_demand_threshold", event.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="low">Low Demand Threshold (%)</Label>
+                  <Input
+                    id="low"
+                    value={String(settings.low_demand_threshold ?? "")}
+                    onChange={(event) => updateSetting("low_demand_threshold", event.target.value)}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Notification Settings */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bell className="size-5 text-primary" />
                 Notifications
               </CardTitle>
-              <CardDescription>
-                Configure how you receive updates
-              </CardDescription>
+              <CardDescription>Enable or disable in-app alerts by type</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="email-notifications">Email Notifications</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Receive important updates via email
-                  </p>
-                </div>
-                <Switch
-                  id="email-notifications"
-                  checked={emailNotifications}
-                  onCheckedChange={setEmailNotifications}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="push-notifications">Push Notifications</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Get real-time alerts in the browser
-                  </p>
-                </div>
-                <Switch
-                  id="push-notifications"
-                  checked={pushNotifications}
-                  onCheckedChange={setPushNotifications}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="schedule-alerts">Schedule Alerts</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Notifications for understaffed shifts
-                  </p>
-                </div>
-                <Switch
-                  id="schedule-alerts"
-                  checked={scheduleAlerts}
-                  onCheckedChange={setScheduleAlerts}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="feedback-alerts">Feedback Alerts</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Get notified of new guest feedback
-                  </p>
-                </div>
-                <Switch
-                  id="feedback-alerts"
-                  checked={feedbackAlerts}
-                  onCheckedChange={setFeedbackAlerts}
-                />
-              </div>
+              {NOTIFICATION_TYPES.map((type, index) => {
+                const current = preferences.find((item) => item.notification_type === type)
+                return (
+                  <React.Fragment key={type}>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>{type.replaceAll("_", " ")}</Label>
+                        <p className="text-sm text-muted-foreground">In-app alert rule</p>
+                      </div>
+                      <Switch
+                        checked={Boolean(current?.is_enabled)}
+                        onCheckedChange={(value) => upsertPreference(type, value)}
+                      />
+                    </div>
+                    {index < NOTIFICATION_TYPES.length - 1 ? <Separator /> : null}
+                  </React.Fragment>
+                )
+              })}
             </CardContent>
           </Card>
 
-          {/* Keyboard Shortcuts */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Keyboard className="size-5 text-primary" />
-                Keyboard Shortcuts
+                <Building className="size-5 text-primary" />
+                Staffing Ratios
               </CardTitle>
-              <CardDescription>
-                Quick navigation with keyboard
-              </CardDescription>
+              <CardDescription>Staff recommendations per department</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <span className="text-sm">Open Command Palette</span>
-                  <kbd className="rounded border bg-muted px-2 py-0.5 text-xs font-medium">
-                    Ctrl + K
-                  </kbd>
+            <CardContent className="space-y-3">
+              {ratios.map((ratio, index) => (
+                <div key={`${ratio.department}-${index}`} className="grid gap-2 rounded-lg border p-3 sm:grid-cols-[1.2fr_1fr_1fr_1fr_auto]">
+                  <Input
+                    placeholder="Department"
+                    value={ratio.department}
+                    onChange={(event) => updateRatio(index, { department: event.target.value })}
+                  />
+                  <Input
+                    placeholder="Guest ratio"
+                    type="number"
+                    value={ratio.guest_ratio}
+                    onChange={(event) => updateRatio(index, { guest_ratio: Number(event.target.value) || 0 })}
+                  />
+                  <Input
+                    placeholder="Min staff"
+                    type="number"
+                    value={ratio.min_staff}
+                    onChange={(event) => updateRatio(index, { min_staff: Number(event.target.value) || 0 })}
+                  />
+                  <Input
+                    placeholder="Max staff"
+                    type="number"
+                    value={ratio.max_staff ?? ""}
+                    onChange={(event) =>
+                      updateRatio(index, {
+                        max_staff: event.target.value ? Number(event.target.value) : null,
+                      })
+                    }
+                  />
+                  <Button variant="ghost" size="icon" onClick={() => removeRatio(index)}>
+                    <Trash2 className="size-4" />
+                  </Button>
                 </div>
-                <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <span className="text-sm">Go to Dashboard</span>
-                  <kbd className="rounded border bg-muted px-2 py-0.5 text-xs font-medium">
-                    G then D
-                  </kbd>
-                </div>
-                <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <span className="text-sm">Go to Promotions</span>
-                  <kbd className="rounded border bg-muted px-2 py-0.5 text-xs font-medium">
-                    G then P
-                  </kbd>
-                </div>
-                <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <span className="text-sm">Go to Feedback</span>
-                  <kbd className="rounded border bg-muted px-2 py-0.5 text-xs font-medium">
-                    G then F
-                  </kbd>
-                </div>
-                <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <span className="text-sm">Toggle Theme</span>
-                  <kbd className="rounded border bg-muted px-2 py-0.5 text-xs font-medium">
-                    T then T
-                  </kbd>
-                </div>
-                <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <span className="text-sm">Go to Revenue</span>
-                  <kbd className="rounded border bg-muted px-2 py-0.5 text-xs font-medium">
-                    G then R
-                  </kbd>
-                </div>
-              </div>
+              ))}
+              <Button variant="outline" onClick={addRatioRow}>
+                <Plus className="mr-2 size-4" />
+                Add Department
+              </Button>
             </CardContent>
           </Card>
 
-          {/* Data & Security */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Shield className="size-5 text-primary" />
-                Data & Security
+                <Activity className="size-5 text-primary" />
+                System Health
               </CardTitle>
-              <CardDescription>
-                Manage your data and security settings
-              </CardDescription>
+              <CardDescription>Live status of key backend dependencies</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="auto-backup">Automatic Backups</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Daily backup of all resort data
-                  </p>
+              {Object.entries(health).map(([key, value]) => (
+                <div key={key} className="flex items-center justify-between rounded-lg border p-3">
+                  <div>
+                    <p className="font-medium capitalize">{key}</p>
+                    <p className="text-xs text-muted-foreground">{value.message}</p>
+                  </div>
+                  <Badge variant={value.status === "ok" ? "default" : "destructive"}>{value.status}</Badge>
                 </div>
-                <Switch
-                  id="auto-backup"
-                  checked={autoBackup}
-                  onCheckedChange={setAutoBackup}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <span className="font-medium">Export All Data</span>
-                  <p className="text-sm text-muted-foreground">
-                    Download a complete backup
-                  </p>
-                </div>
-                <Button variant="outline" size="sm">
-                  <Database className="mr-2 size-4" />
-                  Export
+              ))}
+              <div className="flex items-center justify-end gap-2">
+                <Button variant="outline" onClick={() => void loadAll()}>
+                  <RefreshCcw className="mr-2 size-4" />
+                  Refresh Status
                 </Button>
               </div>
-              <Separator />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="size-5 text-primary" />
+                Backup & Recovery
+              </CardTitle>
+              <CardDescription>Download a complete data backup snapshot</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <span className="font-medium text-destructive">Delete Account</span>
-                  <p className="text-sm text-muted-foreground">
-                    Permanently delete your account
-                  </p>
+                  <span className="font-medium">Export all tables</span>
+                  <p className="text-sm text-muted-foreground">Downloads JSON backup from the backend</p>
                 </div>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm">
-                      Delete
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete your
-                        account and remove all data from our servers.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        Delete Account
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <Button variant="outline" size="sm" onClick={() => void runBackup()} disabled={isBackingUp}>
+                  <Database className="mr-2 size-4" />
+                  {isBackingUp ? "Exporting..." : "Download Backup"}
+                </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Save Button */}
           <div className="flex justify-end">
-            <Button onClick={handleSave} className="bg-primary hover:bg-primary/90">
+            <Button onClick={() => void saveAll()} className="bg-primary hover:bg-primary/90" disabled={isSaving}>
               <Save className="mr-2 size-4" />
-              Save Settings
+              {isSaving ? "Saving..." : "Save Settings"}
             </Button>
           </div>
         </div>

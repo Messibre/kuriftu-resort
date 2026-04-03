@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { SidebarTrigger } from "@/components/ui/sidebar"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { Separator } from "@/components/ui/separator"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Separator } from "@/components/ui/separator";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -12,20 +12,24 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { GlobalSearch } from "@/components/global-search"
-import { ActivityLog } from "@/components/activity-log"
-import { Bell, ChevronLeft } from "lucide-react"
-import { Button } from "@/components/ui/button"
+} from "@/components/ui/breadcrumb";
+import { GlobalSearch } from "@/components/global-search";
+import { ActivityLog } from "@/components/activity-log";
+import { ChevronLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { NotificationsBell } from "@/components/notifications-bell";
 
 interface DashboardHeaderProps {
-  title: string
-  breadcrumbs?: { label: string; href?: string }[]
+  title: string;
+  breadcrumbs?: { label: string; href?: string }[];
 }
 
-export function DashboardHeader({ title, breadcrumbs = [] }: DashboardHeaderProps) {
-  const pathname = usePathname()
-  const isSubPage = pathname !== "/"
+export function DashboardHeader({
+  title,
+  breadcrumbs = [],
+}: DashboardHeaderProps) {
+  const pathname = usePathname();
+  const isSubPage = pathname !== "/";
 
   return (
     <header className="flex h-14 items-center gap-2 border-b border-border bg-background px-3 sm:gap-4 sm:px-4 lg:px-6">
@@ -41,11 +45,11 @@ export function DashboardHeader({ title, breadcrumbs = [] }: DashboardHeaderProp
         ) : null}
         <SidebarTrigger className="size-9" />
       </div>
-      
+
       {/* Desktop: Always show menu trigger */}
       <SidebarTrigger className="-ml-1 hidden md:flex" />
       <Separator orientation="vertical" className="hidden h-6 md:block" />
-      
+
       <span className="truncate font-semibold md:hidden">{title}</span>
       <Breadcrumb className="hidden md:flex">
         <BreadcrumbList>
@@ -59,7 +63,9 @@ export function DashboardHeader({ title, breadcrumbs = [] }: DashboardHeaderProp
                 {index === breadcrumbs.length - 1 ? (
                   <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
                 ) : (
-                  <BreadcrumbLink href={crumb.href}>{crumb.label}</BreadcrumbLink>
+                  <BreadcrumbLink href={crumb.href}>
+                    {crumb.label}
+                  </BreadcrumbLink>
                 )}
               </BreadcrumbItem>
             </span>
@@ -68,17 +74,11 @@ export function DashboardHeader({ title, breadcrumbs = [] }: DashboardHeaderProp
       </Breadcrumb>
       <div className="ml-auto flex items-center gap-2">
         <GlobalSearch className="hidden sm:flex" />
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="size-5" />
-          <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground">
-            3
-          </span>
-          <span className="sr-only">Notifications</span>
-        </Button>
+        <NotificationsBell />
         <ActivityLog />
         <Separator orientation="vertical" className="hidden h-6 sm:block" />
         <ThemeToggle />
       </div>
     </header>
-  )
+  );
 }

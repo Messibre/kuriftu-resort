@@ -2,7 +2,14 @@
 
 import * as React from "react";
 import { format } from "date-fns";
-import { CalendarIcon, Eye, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  CalendarIcon,
+  Download,
+  Eye,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 
 import { DashboardHeader } from "@/components/dashboard-header";
 import {
@@ -48,6 +55,7 @@ import {
   type Promotion,
   type PromotionRoomType,
 } from "@/lib/promotions-api";
+import { exportReport } from "@/lib/export-api";
 
 const ROOM_TYPE_OPTIONS: { value: PromotionRoomType; label: string }[] = [
   { value: "standard", label: "Standard" },
@@ -276,6 +284,30 @@ export function PromotionsManager() {
 
   const hasMorePromotions =
     sortedPromotions.length > DEFAULT_VISIBLE_PROMOTIONS;
+
+  const handleExport = async (formatType: "csv" | "pdf") => {
+    const now = new Date();
+    const from = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() - 90,
+    );
+    try {
+      await exportReport(
+        "promotions",
+        format(from, "yyyy-MM-dd"),
+        format(now, "yyyy-MM-dd"),
+        formatType,
+      );
+      toast({ title: `Promotions ${formatType.toUpperCase()} exported` });
+    } catch {
+      toast({
+        title: "Export failed",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="flex flex-1 flex-col">
@@ -533,17 +565,35 @@ export function PromotionsManager() {
         <div className="mt-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">Existing Promotions</h2>
-            {hasMorePromotions && (
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowAllPromotions((current) => !current)}
+                onClick={() => void handleExport("csv")}
               >
-                {showAllPromotions
-                  ? "Show recent only"
-                  : `Show more (${sortedPromotions.length - DEFAULT_VISIBLE_PROMOTIONS} more)`}
+                <Download className="mr-1 size-3" />
+                Export CSV
               </Button>
-            )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleExport("pdf")}
+              >
+                <Download className="mr-1 size-3" />
+                Export PDF
+              </Button>
+              {hasMorePromotions && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAllPromotions((current) => !current)}
+                >
+                  {showAllPromotions
+                    ? "Show recent only"
+                    : `Show more (${sortedPromotions.length - DEFAULT_VISIBLE_PROMOTIONS} more)`}
+                </Button>
+              )}
+            </div>
           </div>
 
           {isLoading ? (

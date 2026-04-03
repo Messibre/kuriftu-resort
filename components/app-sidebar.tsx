@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Tag,
@@ -10,10 +10,12 @@ import {
   Bot,
   Calendar,
   Users,
+  Bell,
+  ScrollText,
   Settings,
   HelpCircle,
   LogOut,
-} from "lucide-react"
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -26,15 +28,15 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
-} from "@/components/ui/sidebar"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+} from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 
 const mainNavItems = [
   {
@@ -46,6 +48,11 @@ const mainNavItems = [
     title: "Promotions",
     url: "/promotions",
     icon: Tag,
+  {
+    title: "Audit Log",
+    url: "/audit-log",
+    icon: ScrollText,
+  },
   },
   {
     title: "Feedback",
@@ -57,7 +64,7 @@ const mainNavItems = [
     url: "/revenue",
     icon: BarChart3,
   },
-]
+];
 
 const managementItems = [
   {
@@ -71,14 +78,19 @@ const managementItems = [
     icon: Users,
   },
   {
+    title: "Notifications",
+    url: "/notifications",
+    icon: Bell,
+  },
+  {
     title: "Settings",
     url: "/settings",
     icon: Settings,
   },
-]
+];
 
 export function AppSidebar() {
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   return (
     <Sidebar collapsible="icon">
@@ -92,7 +104,9 @@ export function AppSidebar() {
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
                   <span className="font-semibold">ResortAI</span>
-                  <span className="text-xs text-muted-foreground">Admin Panel</span>
+                  <span className="text-xs text-muted-foreground">
+                    Admin Panel
+                  </span>
                 </div>
               </Link>
             </SidebarMenuButton>
@@ -106,7 +120,11 @@ export function AppSidebar() {
             <SidebarMenu>
               {mainNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={pathname === item.url} tooltip={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === item.url}
+                    tooltip={item.title}
+                  >
                     <Link href={item.url}>
                       <item.icon className="size-4" />
                       <span>{item.title}</span>
@@ -124,7 +142,11 @@ export function AppSidebar() {
             <SidebarMenu>
               {managementItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={pathname === item.url} tooltip={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === item.url}
+                    tooltip={item.title}
+                  >
                     <Link href={item.url}>
                       <item.icon className="size-4" />
                       <span>{item.title}</span>
@@ -141,14 +163,21 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent">
+                <SidebarMenuButton
+                  size="lg"
+                  className="data-[state=open]:bg-sidebar-accent"
+                >
                   <Avatar className="size-8">
                     <AvatarImage src="/placeholder-user.jpg" alt="Admin" />
-                    <AvatarFallback className="bg-primary/10 text-primary">AD</AvatarFallback>
+                    <AvatarFallback className="bg-primary/10 text-primary">
+                      AD
+                    </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col gap-0.5 leading-none">
                     <span className="font-medium">Admin User</span>
-                    <span className="text-xs text-muted-foreground">admin@resort.com</span>
+                    <span className="text-xs text-muted-foreground">
+                      admin@resort.com
+                    </span>
                   </div>
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
@@ -177,5 +206,5 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }

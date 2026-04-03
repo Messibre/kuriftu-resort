@@ -24,6 +24,7 @@ import {
   TrendingDown,
   Bed,
   DollarSign,
+  Download,
   Users,
   Target,
   Calculator,
@@ -45,6 +46,7 @@ import {
   Legend,
 } from "recharts";
 import { getRevenueDataset, type RevenueDailyData } from "@/lib/revenue-api";
+import { exportReport } from "@/lib/export-api";
 
 function formatCurrency(value: number): string {
   return `ETB ${value.toLocaleString(undefined, {
@@ -150,6 +152,25 @@ export default function RevenuePage() {
   const handleRefresh = () => {
     setIsRefreshing(true);
     void loadData();
+  };
+
+  const handleExport = async (formatType: "csv" | "pdf") => {
+    const end = dateRange === "custom" ? customEndDate : today;
+    const start =
+      dateRange === "custom"
+        ? customStartDate
+        : formatIsoDate(
+            new Date(
+              new Date(end).getTime() -
+                (dateRange === "7d" ? 6 : dateRange === "30d" ? 29 : 89) *
+                  24 *
+                  60 *
+                  60 *
+                  1000,
+            ),
+          );
+
+    await exportReport("forecast", start, end, formatType);
   };
 
   const dailyOccupancyData = React.useMemo(() => {
@@ -318,6 +339,22 @@ export default function RevenuePage() {
                   className={`size-4 ${isRefreshing ? "animate-spin" : ""}`}
                 />
                 Refresh
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleExport("csv")}
+              >
+                <Download className="mr-2 size-4" />
+                Export CSV
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleExport("pdf")}
+              >
+                <Download className="mr-2 size-4" />
+                Export PDF
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">

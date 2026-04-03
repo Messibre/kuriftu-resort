@@ -6,6 +6,7 @@ import {
   CalendarIcon,
   ChevronDown,
   ChevronUp,
+  Download,
   Filter,
   MessageSquare,
   Plus,
@@ -59,6 +60,7 @@ import {
   type FeedbackSentiment,
   type FeedbackSource,
 } from "@/lib/feedback-api";
+import { exportReport } from "@/lib/export-api";
 import { useToast } from "@/hooks/use-toast";
 
 const STOP_WORDS = new Set([
@@ -247,6 +249,33 @@ export default function FeedbackPage() {
     }
   };
 
+  const handleExport = async (formatType: "csv" | "pdf") => {
+    const now = new Date();
+    const from =
+      startDate ??
+      new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30);
+    const to = endDate ?? now;
+
+    try {
+      await exportReport(
+        "feedback",
+        format(from, "yyyy-MM-dd"),
+        format(to, "yyyy-MM-dd"),
+        formatType,
+      );
+      toast({
+        title: "Export started",
+        description: `Feedback report (${formatType.toUpperCase()}) downloaded.`,
+      });
+    } catch {
+      toast({
+        title: "Export failed",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="flex flex-1 flex-col">
       <DashboardHeader
@@ -403,6 +432,24 @@ export default function FeedbackPage() {
                     }}
                   >
                     Clear
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void handleExport("csv")}
+                  >
+                    <Download className="mr-1 size-3" />
+                    Export CSV
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void handleExport("pdf")}
+                  >
+                    <Download className="mr-1 size-3" />
+                    Export PDF
                   </Button>
 
                   <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
