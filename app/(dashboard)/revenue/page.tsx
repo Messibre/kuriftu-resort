@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -63,6 +64,13 @@ function formatShortDate(dateString: string): string {
   });
 }
 
+function formatIsoDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function buildWeeklyOccupancy(data: RevenueDailyData[]) {
   const weeks: { week: string; actual: number; predicted: number }[] = [];
 
@@ -96,7 +104,12 @@ function buildWeeklyOccupancy(data: RevenueDailyData[]) {
 }
 
 export default function RevenuePage() {
+  const today = React.useMemo(() => formatIsoDate(new Date()), []);
   const [dateRange, setDateRange] = React.useState("30d");
+  const [customStartDate, setCustomStartDate] = React.useState(
+    formatIsoDate(new Date(new Date().setDate(new Date().getDate() - 29))),
+  );
+  const [customEndDate, setCustomEndDate] = React.useState(today);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
   const [hasError, setHasError] = React.useState(false);
@@ -109,10 +122,17 @@ export default function RevenuePage() {
     setHasError(false);
 
     try {
+      const isCustom = dateRange === "custom";
       const data = await getRevenueDataset(
         (dateRange === "7d" || dateRange === "30d" || dateRange === "90d"
           ? dateRange
-          : "90d") as "7d" | "30d" | "90d",
+          : "custom") as "7d" | "30d" | "90d" | "custom",
+        isCustom
+          ? {
+              startDate: customStartDate,
+              endDate: customEndDate,
+            }
+          : undefined,
       );
       setDataset(data);
     } catch {
@@ -121,7 +141,7 @@ export default function RevenuePage() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [dateRange]);
+  }, [customEndDate, customStartDate, dateRange]);
 
   React.useEffect(() => {
     void loadData();
@@ -269,6 +289,25 @@ export default function RevenuePage() {
                   <SelectItem value="custom">Custom</SelectItem>
                 </SelectContent>
               </Select>
+              {dateRange === "custom" ? (
+                <>
+                  <Input
+                    type="date"
+                    value={customStartDate}
+                    max={customEndDate}
+                    onChange={(event) => setCustomStartDate(event.target.value)}
+                    className="w-[170px]"
+                  />
+                  <Input
+                    type="date"
+                    value={customEndDate}
+                    min={customStartDate}
+                    max={today}
+                    onChange={(event) => setCustomEndDate(event.target.value)}
+                    className="w-[170px]"
+                  />
+                </>
+              ) : null}
               <Button
                 variant="outline"
                 size="sm"

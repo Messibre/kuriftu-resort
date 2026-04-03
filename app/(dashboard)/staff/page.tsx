@@ -135,10 +135,6 @@ function calculateCost(counts: DepartmentCounts): number {
 }
 
 function isRowDirty(row: StaffPlanRow): boolean {
-  if (row.reason !== row.persistedReason) {
-    return true;
-  }
-
   return DEPARTMENT_ORDER.some(
     (department) =>
       row.approved[department] !== row.persistedApproved[department],
@@ -674,7 +670,7 @@ export default function StaffPage() {
               <Select
                 value={rangeKey}
                 onValueChange={(value) =>
-                  setRangeKey(value as "7" | "14" | "30")
+                  setRangeKey(value as RangeKey)
                 }
               >
                 <SelectTrigger className="w-[190px]">

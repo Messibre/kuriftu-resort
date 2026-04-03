@@ -11,6 +11,11 @@ const HOURLY_RATES = {
 
 type DateRangeKey = "7d" | "30d" | "90d" | "custom";
 
+interface CustomRange {
+  startDate: string;
+  endDate: string;
+}
+
 interface ForecastPredictionItem {
   date: string;
   predicted_rooms: number;
@@ -92,7 +97,30 @@ function formatDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function resolveRange(range: DateRangeKey) {
+function resolveRange(range: DateRangeKey, customRange?: CustomRange) {
+  if (range === "custom" && customRange) {
+    const start = customRange.startDate;
+    const end = customRange.endDate;
+
+    if (start <= end) {
+      const startDateObject = new Date(start);
+      const endDateObject = new Date(end);
+      const days = Math.max(
+        1,
+        Math.round(
+          (endDateObject.getTime() - startDateObject.getTime()) /
+            (1000 * 60 * 60 * 24),
+        ) + 1,
+      );
+
+      return {
+        startDate: start,
+        endDate: end,
+        days,
+      };
+    }
+  }
+
   const end = new Date();
   const start = new Date(end);
 
@@ -329,8 +357,9 @@ async function fallbackComputeRevenue(range: ReturnType<typeof resolveRange>) {
 
 export async function getRevenueDataset(
   rangeKey: DateRangeKey,
+  customRange?: CustomRange,
 ): Promise<RevenueDataset> {
-  const range = resolveRange(rangeKey);
+  const range = resolveRange(rangeKey, customRange);
 
   try {
     const dashboard = await requestJson<RevenueDashboardApiResponse>(
