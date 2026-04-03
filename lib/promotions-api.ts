@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE_PATH = "/api/promotions";
 
 export type PromotionRoomType = "standard" | "deluxe" | "suite";
 
@@ -30,7 +30,7 @@ interface PromotionApiItem {
   start_date: string;
   end_date: string;
   discount_percent: number;
-  room_types: string[];
+  room_types: string[] | null;
   is_active: boolean;
 }
 
@@ -70,6 +70,10 @@ function normalizeRoomType(roomType: string): PromotionRoomType | null {
 }
 
 function mapPromotion(apiItem: PromotionApiItem): Promotion {
+  const roomTypes = (apiItem.room_types ?? [])
+    .map(normalizeRoomType)
+    .filter((roomType): roomType is PromotionRoomType => roomType !== null);
+
   return {
     id: String(apiItem.id),
     title: apiItem.title,
@@ -77,9 +81,7 @@ function mapPromotion(apiItem: PromotionApiItem): Promotion {
     startDate: createLocalDate(apiItem.start_date),
     endDate: createLocalDate(apiItem.end_date),
     discountPercent: apiItem.discount_percent,
-    roomTypes: apiItem.room_types
-      .map(normalizeRoomType)
-      .filter((roomType): roomType is PromotionRoomType => roomType !== null),
+    roomTypes,
     isActive: apiItem.is_active,
   };
 }
@@ -97,11 +99,7 @@ function toPayload(promotion: Omit<Promotion, "id">): PromotionPayload {
 }
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
-  if (!API_BASE_URL) {
-    throw new Error("Missing NEXT_PUBLIC_API_BASE_URL environment variable");
-  }
-
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(`${API_BASE_PATH}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
@@ -123,7 +121,7 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function getPromotions(): Promise<Promotion[]> {
-  const data = await requestJson<PromotionListResponse>("/admin/promotions");
+  const data = await requestJson<PromotionListResponse>("");
   return data.promotions.map(mapPromotion);
 }
 
@@ -131,13 +129,10 @@ export async function createPromotion(
   promotion: Omit<Promotion, "id">,
 ): Promise<void> {
   const payload = toPayload(promotion);
-  const result = await requestJson<PromotionMutationResponse>(
-    "/admin/promotions",
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    },
-  );
+  const result = await requestJson<PromotionMutationResponse>("", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 
   if (result?.success === false) {
     throw new Error("Failed to create promotion");
@@ -149,13 +144,10 @@ export async function updatePromotion(
   promotion: Omit<Promotion, "id">,
 ): Promise<void> {
   const payload = toPayload(promotion);
-  const result = await requestJson<PromotionMutationResponse>(
-    `/admin/promotions/${id}`,
-    {
-      method: "PUT",
-      body: JSON.stringify(payload),
-    },
-  );
+  const result = await requestJson<PromotionMutationResponse>(`/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
 
   if (result?.success === false) {
     throw new Error("Failed to update promotion");
@@ -163,12 +155,9 @@ export async function updatePromotion(
 }
 
 export async function deletePromotion(id: string): Promise<void> {
-  const result = await requestJson<PromotionMutationResponse>(
-    `/admin/promotions/${id}`,
-    {
-      method: "DELETE",
-    },
-  );
+  const result = await requestJson<PromotionMutationResponse>(`/${id}`, {
+    method: "DELETE",
+  });
 
   if (result?.success === false) {
     throw new Error("Failed to delete promotion");

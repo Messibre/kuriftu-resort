@@ -2,13 +2,30 @@
 
 import * as React from "react";
 import { format } from "date-fns";
-import { CalendarIcon, Pencil, Plus, Trash2 } from "lucide-react";
+import { CalendarIcon, Eye, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { DashboardHeader } from "@/components/dashboard-header";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,41 +35,18 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
-import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
   createPromotion,
   deletePromotion,
   getPromotions,
+  updatePromotion,
   type Promotion,
   type PromotionRoomType,
-  updatePromotion,
 } from "@/lib/promotions-api";
 
 const ROOM_TYPE_OPTIONS: { value: PromotionRoomType; label: string }[] = [
@@ -60,6 +54,8 @@ const ROOM_TYPE_OPTIONS: { value: PromotionRoomType; label: string }[] = [
   { value: "deluxe", label: "Deluxe" },
   { value: "suite", label: "Suite" },
 ];
+
+const DEFAULT_VISIBLE_PROMOTIONS = 5;
 
 type PromotionFormState = {
   title: string;
@@ -82,7 +78,7 @@ const defaultFormState: PromotionFormState = {
 };
 
 function formatDateRange(startDate: Date, endDate: Date): string {
-  return `${format(startDate, "MMM d, yyyy")} - ${format(endDate, "MMM d, yyyy")}`;
+  return `${format(startDate, "MMM d")} - ${format(endDate, "MMM d, yyyy")}`;
 }
 
 function formatRoomType(roomType: PromotionRoomType): string {
@@ -105,14 +101,11 @@ export function PromotionsManager() {
   const [promotions, setPromotions] = React.useState<Promotion[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
-  const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editingPromotion, setEditingPromotion] =
     React.useState<Promotion | null>(null);
-  const [deleteTarget, setDeleteTarget] = React.useState<Promotion | null>(
-    null,
-  );
   const [formState, setFormState] =
     React.useState<PromotionFormState>(defaultFormState);
+  const [showAllPromotions, setShowAllPromotions] = React.useState(false);
   const { toast } = useToast();
 
   const loadPromotions = React.useCallback(async () => {
@@ -136,22 +129,14 @@ export function PromotionsManager() {
     void loadPromotions();
   }, [loadPromotions]);
 
-  const openCreateDialog = () => {
+  const resetForm = () => {
     setEditingPromotion(null);
     setFormState(defaultFormState);
-    setDialogOpen(true);
   };
 
-  const openEditDialog = (promotion: Promotion) => {
+  const openEdit = (promotion: Promotion) => {
     setEditingPromotion(promotion);
     setFormState(buildFormState(promotion));
-    setDialogOpen(true);
-  };
-
-  const closeDialog = () => {
-    setDialogOpen(false);
-    setEditingPromotion(null);
-    setFormState(defaultFormState);
   };
 
   const handleRoomTypeChange = (
@@ -216,7 +201,7 @@ export function PromotionsManager() {
         });
       }
 
-      closeDialog();
+      resetForm();
       await loadPromotions();
     } catch {
       toast({
@@ -229,14 +214,22 @@ export function PromotionsManager() {
     }
   };
 
-  const handleDelete = async (promotion: Promotion) => {
+  const handleToggleActive = async (promotion: Promotion) => {
     try {
-      await deletePromotion(promotion.id);
-      toast({
-        title: "Promotion deleted",
-        description: `"${promotion.title}" has been removed.`,
+      await updatePromotion(promotion.id, {
+        title: promotion.title,
+        description: promotion.description,
+        startDate: promotion.startDate,
+        endDate: promotion.endDate,
+        discountPercent: promotion.discountPercent,
+        roomTypes: promotion.roomTypes,
+        isActive: !promotion.isActive,
       });
-      setDeleteTarget(null);
+
+      toast({
+        title: "Promotion updated",
+        description: `"${promotion.title}" is now ${promotion.isActive ? "hidden" : "active"}.`,
+      });
       await loadPromotions();
     } catch {
       toast({
@@ -247,343 +240,450 @@ export function PromotionsManager() {
     }
   };
 
+  const handleDelete = async (promotion: Promotion) => {
+    try {
+      await deletePromotion(promotion.id);
+      toast({
+        title: "Promotion deleted",
+        description: `"${promotion.title}" has been removed.`,
+      });
+      await loadPromotions();
+    } catch {
+      toast({
+        title: "Failed to save promotion",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const sortedPromotions = React.useMemo(() => {
+    return [...promotions].sort((a, b) => {
+      const aId = Number(a.id);
+      const bId = Number(b.id);
+
+      if (Number.isNaN(aId) || Number.isNaN(bId)) {
+        return 0;
+      }
+
+      return bId - aId;
+    });
+  }, [promotions]);
+
+  const visiblePromotions = showAllPromotions
+    ? sortedPromotions
+    : sortedPromotions.slice(0, DEFAULT_VISIBLE_PROMOTIONS);
+
+  const hasMorePromotions =
+    sortedPromotions.length > DEFAULT_VISIBLE_PROMOTIONS;
+
   return (
     <div className="flex flex-1 flex-col">
       <DashboardHeader
         title="Promotions"
         breadcrumbs={[{ label: "Promotions" }]}
       />
+
       <main className="flex-1 overflow-auto p-4 lg:p-6">
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight">
-                Promotions
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Manage offers and packages for the resort.
-              </p>
-            </div>
-            <Button
-              onClick={openCreateDialog}
-              className="bg-primary hover:bg-primary/90"
-            >
-              <Plus className="mr-2 size-4" />
-              Create New Promotion
-            </Button>
+        <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+          <Card className="border-primary/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Plus className="size-5 text-primary" />
+                {editingPromotion ? "Edit Promotion" : "Create New Promotion"}
+              </CardTitle>
+              <CardDescription>
+                Fill in the details to {editingPromotion ? "update" : "create"}{" "}
+                a promotion
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="title">Title</Label>
+                <Input
+                  id="title"
+                  value={formState.title}
+                  onChange={(event) =>
+                    setFormState((current) => ({
+                      ...current,
+                      title: event.target.value,
+                    }))
+                  }
+                  placeholder="Weekend Special"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formState.description}
+                  onChange={(event) =>
+                    setFormState((current) => ({
+                      ...current,
+                      description: event.target.value,
+                    }))
+                  }
+                  rows={3}
+                  placeholder="Describe your promotion..."
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Start Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !formState.startDate && "text-muted-foreground",
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 size-4" />
+                        {formState.startDate
+                          ? format(formState.startDate, "PPP")
+                          : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={formState.startDate}
+                        onSelect={(date) =>
+                          setFormState((current) => ({
+                            ...current,
+                            startDate: date,
+                          }))
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>End Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !formState.endDate && "text-muted-foreground",
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 size-4" />
+                        {formState.endDate
+                          ? format(formState.endDate, "PPP")
+                          : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={formState.endDate}
+                        onSelect={(date) =>
+                          setFormState((current) => ({
+                            ...current,
+                            endDate: date,
+                          }))
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Discount Percentage</Label>
+                  <span className="text-lg font-bold text-primary">
+                    {formState.discountPercent}%
+                  </span>
+                </div>
+                <Slider
+                  value={[formState.discountPercent]}
+                  onValueChange={([value]) =>
+                    setFormState((current) => ({
+                      ...current,
+                      discountPercent: value,
+                    }))
+                  }
+                  min={0}
+                  max={100}
+                  step={1}
+                />
+              </div>
+
+              <div className="space-y-3">
+                <Label>Room Types</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {ROOM_TYPE_OPTIONS.map((roomType) => (
+                    <div
+                      key={roomType.value}
+                      className="flex items-center space-x-2"
+                    >
+                      <Checkbox
+                        id={roomType.value}
+                        checked={formState.roomTypes.includes(roomType.value)}
+                        onCheckedChange={(checked) =>
+                          handleRoomTypeChange(roomType.value, checked === true)
+                        }
+                      />
+                      <Label htmlFor={roomType.value} className="font-normal">
+                        {roomType.label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div>
+                  <Label htmlFor="promotion-active">Active</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Visible to guests
+                  </p>
+                </div>
+                <Switch
+                  id="promotion-active"
+                  checked={formState.isActive}
+                  onCheckedChange={(checked) =>
+                    setFormState((current) => ({
+                      ...current,
+                      isActive: checked,
+                    }))
+                  }
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => void handleSave()}
+                  disabled={isSaving}
+                  className="flex-1 bg-primary hover:bg-primary/90"
+                >
+                  {isSaving
+                    ? "Saving..."
+                    : editingPromotion
+                      ? "Update Promotion"
+                      : "Create Promotion"}
+                </Button>
+                {editingPromotion && (
+                  <Button
+                    variant="outline"
+                    onClick={resetForm}
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Eye className="size-5 text-primary" />
+                Guest View Preview
+              </CardTitle>
+              <CardDescription>
+                How guests will see this promotion
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-lg border border-primary/30 bg-gradient-to-br from-primary/5 to-transparent p-4">
+                <Badge className="mb-3 bg-primary text-primary-foreground">
+                  Special Offer
+                </Badge>
+                <h3 className="mb-2 text-lg font-semibold">
+                  {formState.title || "Your Promotion Title"}
+                </h3>
+                <p className="mb-3 text-sm text-muted-foreground">
+                  {formState.description ||
+                    "Promotion description will appear here..."}
+                </p>
+                {formState.startDate && formState.endDate && (
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    {formatDateRange(formState.startDate, formState.endDate)}
+                  </p>
+                )}
+                <span className="text-2xl font-bold text-primary">
+                  {formState.discountPercent}% OFF
+                </span>
+                {formState.roomTypes.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1">
+                    {formState.roomTypes.map((type) => (
+                      <Badge key={type} variant="outline" className="text-xs">
+                        {formatRoomType(type)}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="mt-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Existing Promotions</h2>
+            {hasMorePromotions && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAllPromotions((current) => !current)}
+              >
+                {showAllPromotions
+                  ? "Show recent only"
+                  : `Show more (${sortedPromotions.length - DEFAULT_VISIBLE_PROMOTIONS} more)`}
+              </Button>
+            )}
           </div>
 
-          <div className="rounded-lg border border-border bg-card">
-            <div className="border-b border-border px-4 py-3">
-              <h2 className="text-sm font-medium">Promotion List</h2>
-              <p className="text-sm text-muted-foreground">
-                Loaded from the live admin API.
-              </p>
+          {isLoading ? (
+            <div className="rounded-lg border border-border px-4 py-8 text-sm text-muted-foreground">
+              Loading promotions...
             </div>
+          ) : sortedPromotions.length === 0 ? (
+            <div className="rounded-lg border border-border px-4 py-8 text-sm text-muted-foreground">
+              No promotions found. Create one to get started.
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {visiblePromotions.map((promotion) => (
+                <Card
+                  key={promotion.id}
+                  className={cn(
+                    "transition-all",
+                    promotion.isActive
+                      ? "border-primary/30"
+                      : "border-border opacity-60",
+                  )}
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <CardTitle className="text-base">
+                          {promotion.title}
+                        </CardTitle>
+                        <CardDescription className="mt-1 line-clamp-2">
+                          {promotion.description}
+                        </CardDescription>
+                      </div>
+                      <Switch
+                        checked={promotion.isActive}
+                        onCheckedChange={() =>
+                          void handleToggleActive(promotion)
+                        }
+                        className="data-[state=checked]:bg-primary"
+                      />
+                    </div>
+                  </CardHeader>
 
-            {isLoading ? (
-              <div className="px-4 py-8 text-sm text-muted-foreground">
-                Loading promotions...
-              </div>
-            ) : promotions.length === 0 ? (
-              <div className="px-4 py-8 text-sm text-muted-foreground">
-                No promotions found. Create one to get started.
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Date Range</TableHead>
-                    <TableHead>Discount %</TableHead>
-                    <TableHead>Room Types</TableHead>
-                    <TableHead>Active Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {promotions.map((promotion) => (
-                    <TableRow key={promotion.id}>
-                      <TableCell className="font-medium whitespace-normal">
-                        {promotion.title}
-                      </TableCell>
-                      <TableCell className="whitespace-normal">
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Discount</span>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          promotion.isActive
+                            ? "border-primary text-primary"
+                            : "border-muted-foreground",
+                        )}
+                      >
+                        {promotion.discountPercent}% OFF
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Period</span>
+                      <span className="text-xs">
                         {formatDateRange(
                           promotion.startDate,
                           promotion.endDate,
                         )}
-                      </TableCell>
-                      <TableCell>{promotion.discountPercent}%</TableCell>
-                      <TableCell className="whitespace-normal">
-                        <div className="flex flex-wrap gap-1">
-                          {promotion.roomTypes.map((roomType) => (
-                            <Badge key={roomType} variant="secondary">
-                              {formatRoomType(roomType)}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={promotion.isActive ? "default" : "secondary"}
-                          className={cn(
-                            promotion.isActive
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-muted-foreground",
-                          )}
-                        >
-                          {promotion.isActive ? "Active" : "Hidden"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="inline-flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openEditDialog(promotion)}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1">
+                      {promotion.roomTypes.length > 0 ? (
+                        promotion.roomTypes.map((type) => (
+                          <Badge
+                            key={type}
+                            variant="secondary"
+                            className="text-xs"
                           >
-                            <Pencil className="mr-2 size-3.5" />
-                            Edit
-                          </Button>
+                            {formatRoomType(type)}
+                          </Badge>
+                        ))
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">
+                          All room types
+                        </Badge>
+                      )}
+                    </div>
+
+                    <Separator />
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => openEdit(promotion)}
+                      >
+                        <Pencil className="mr-1 size-3" />
+                        Edit
+                      </Button>
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
                           <Button
                             variant="outline"
                             size="sm"
                             className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                            onClick={() => setDeleteTarget(promotion)}
                           >
-                            <Trash2 className="size-3.5" />
-                            <span className="sr-only">Delete promotion</span>
+                            <Trash2 className="size-3" />
                           </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </div>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              Delete Promotion?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete &quot;
+                              {promotion.title}&quot;. This action cannot be
+                              undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => {
+                                void handleDelete(promotion);
+                              }}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </main>
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              {editingPromotion ? "Edit Promotion" : "Create New Promotion"}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="grid gap-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="title">Title</Label>
-              <Input
-                id="title"
-                value={formState.title}
-                onChange={(event) =>
-                  setFormState((current) => ({
-                    ...current,
-                    title: event.target.value,
-                  }))
-                }
-                placeholder="Weekend Special"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formState.description}
-                onChange={(event) =>
-                  setFormState((current) => ({
-                    ...current,
-                    description: event.target.value,
-                  }))
-                }
-                rows={4}
-                placeholder="Describe the offer..."
-              />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Start Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !formState.startDate && "text-muted-foreground",
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 size-4" />
-                      {formState.startDate
-                        ? format(formState.startDate, "PPP")
-                        : "Pick a date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={formState.startDate}
-                      onSelect={(date) =>
-                        setFormState((current) => ({
-                          ...current,
-                          startDate: date,
-                        }))
-                      }
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="space-y-2">
-                <Label>End Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !formState.endDate && "text-muted-foreground",
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 size-4" />
-                      {formState.endDate
-                        ? format(formState.endDate, "PPP")
-                        : "Pick a date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={formState.endDate}
-                      onSelect={(date) =>
-                        setFormState((current) => ({
-                          ...current,
-                          endDate: date,
-                        }))
-                      }
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label>Discount Percentage</Label>
-                <span className="text-sm font-semibold text-primary">
-                  {formState.discountPercent}%
-                </span>
-              </div>
-              <Slider
-                value={[formState.discountPercent]}
-                onValueChange={([value]) =>
-                  setFormState((current) => ({
-                    ...current,
-                    discountPercent: value,
-                  }))
-                }
-                min={0}
-                max={100}
-                step={1}
-              />
-            </div>
-
-            <div className="space-y-3">
-              <Label>Room Types</Label>
-              <div className="grid gap-3 sm:grid-cols-3">
-                {ROOM_TYPE_OPTIONS.map((roomType) => (
-                  <div key={roomType.value} className="flex items-center gap-2">
-                    <Checkbox
-                      id={roomType.value}
-                      checked={formState.roomTypes.includes(roomType.value)}
-                      onCheckedChange={(checked) =>
-                        handleRoomTypeChange(roomType.value, checked === true)
-                      }
-                    />
-                    <Label htmlFor={roomType.value} className="font-normal">
-                      {roomType.label}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="is-active">Active</Label>
-                <p className="text-sm text-muted-foreground">
-                  Controls whether this promotion is visible to guests.
-                </p>
-              </div>
-              <Switch
-                id="is-active"
-                checked={formState.isActive}
-                onCheckedChange={(checked) =>
-                  setFormState((current) => ({ ...current, isActive: checked }))
-                }
-              />
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <Button
-                onClick={() => void handleSave()}
-                disabled={isSaving}
-                className="flex-1 bg-primary hover:bg-primary/90"
-              >
-                {isSaving
-                  ? "Saving..."
-                  : editingPromotion
-                    ? "Update Promotion"
-                    : "Create Promotion"}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={closeDialog}
-                disabled={isSaving}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog
-        open={deleteTarget !== null}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Promotion?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete "{deleteTarget?.title}".
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteTarget(null)}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (deleteTarget) {
-                  void handleDelete(deleteTarget);
-                }
-              }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
