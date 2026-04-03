@@ -48,11 +48,11 @@ const mainNavItems = [
     title: "Promotions",
     url: "/promotions",
     icon: Tag,
+  },
   {
     title: "Audit Log",
     url: "/audit-log",
     icon: ScrollText,
-  },
   },
   {
     title: "Feedback",
@@ -168,7 +168,6 @@ export function AppSidebar() {
                   className="data-[state=open]:bg-sidebar-accent"
                 >
                   <Avatar className="size-8">
-                    <AvatarImage src="/placeholder-user.jpg" alt="Admin" />
                     <AvatarFallback className="bg-primary/10 text-primary">
                       AD
                     </AvatarFallback>

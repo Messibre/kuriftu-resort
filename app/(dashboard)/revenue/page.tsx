@@ -47,6 +47,7 @@ import {
 } from "recharts";
 import { getRevenueDataset, type RevenueDailyData } from "@/lib/revenue-api";
 import { exportReport } from "@/lib/export-api";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function formatCurrency(value: number): string {
   return `ETB ${value.toLocaleString(undefined, {
@@ -279,6 +280,29 @@ export default function RevenuePage() {
       },
     ];
   }, [dataset]);
+
+  if (isLoading && dataset === null) {
+    return (
+      <div className="flex flex-1 flex-col">
+        <DashboardHeader
+          title="Revenue & Performance"
+          breadcrumbs={[{ label: "Revenue" }]}
+        />
+        <main className="flex-1 overflow-auto p-4 lg:p-6">
+          <div className="flex flex-col gap-6">
+            <Skeleton className="h-14 w-full rounded-xl" />
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <Skeleton key={index} className="h-36 rounded-xl" />
+              ))}
+            </div>
+            <Skeleton className="h-[420px] w-full rounded-xl" />
+            <Skeleton className="h-[420px] w-full rounded-xl" />
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-1 flex-col">

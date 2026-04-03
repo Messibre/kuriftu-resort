@@ -1,4 +1,5 @@
 const API_BASE_PATH = "/api";
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
 const LOCAL_OVERRIDE_STORAGE_KEY = "staff-overrides-v1";
 
@@ -49,6 +50,13 @@ interface StaffOverrideApiResponse {
 interface MutationResponse {
   success: boolean;
 }
+
+type CacheEntry<T> = {
+  expiresAt: number;
+  value: Promise<T>;
+};
+
+const staffingCache = new Map<string, CacheEntry<DailyStaffRecommendation[]>>();
 
 function makeOverrideId(date: string, department: StaffDepartment): string {
   return `${date}:${department}`;
@@ -134,23 +142,40 @@ export async function getForecastStaffing(
   horizonDays: number,
   totalRooms: number,
 ): Promise<DailyStaffRecommendation[]> {
-  const data = await requestJson<ForecastApiResponse>("/forecast", {
-    method: "POST",
-    body: JSON.stringify({
-      horizon_days: horizonDays,
-      include_staffing: true,
-      total_rooms: totalRooms,
-    }),
+  const cacheKey = `${horizonDays}:${totalRooms}`;
+  const now = Date.now();
+  const cached = staffingCache.get(cacheKey);
+
+  if (cached && cached.expiresAt > now) {
+    return cached.value;
+  }
+
+  const request = (async () => {
+    const data = await requestJson<ForecastApiResponse>("/forecast", {
+      method: "POST",
+      body: JSON.stringify({
+        horizon_days: horizonDays,
+        include_staffing: true,
+        total_rooms: totalRooms,
+      }),
+    });
+
+    return (data.staffing ?? []).map((item) => ({
+      date: item.date,
+      housekeeping: Number(item.housekeeping_staff ?? 0),
+      front_desk: Number(item.front_desk_staff ?? 0),
+      f_b: Number(item.f_b_staff ?? 0),
+      maintenance: Number(item.maintenance_staff ?? 0),
+      total_staff_cost: Number(item.total_staff_cost ?? 0),
+    }));
+  })();
+
+  staffingCache.set(cacheKey, {
+    expiresAt: now + CACHE_TTL_MS,
+    value: request,
   });
 
-  return (data.staffing ?? []).map((item) => ({
-    date: item.date,
-    housekeeping: Number(item.housekeeping_staff ?? 0),
-    front_desk: Number(item.front_desk_staff ?? 0),
-    f_b: Number(item.f_b_staff ?? 0),
-    maintenance: Number(item.maintenance_staff ?? 0),
-    total_staff_cost: Number(item.total_staff_cost ?? 0),
-  }));
+  return request;
 }
 
 export async function getStaffOverrides(

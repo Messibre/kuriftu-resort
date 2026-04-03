@@ -18,6 +18,7 @@ import { ActivityLog } from "@/components/activity-log";
 import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NotificationsBell } from "@/components/notifications-bell";
+import { formatGregorianAndEthiopian } from "@/lib/date-format";
 
 interface DashboardHeaderProps {
   title: string;
@@ -72,6 +73,12 @@ export function DashboardHeader({
           ))}
         </BreadcrumbList>
       </Breadcrumb>
+      <div className="hidden min-w-0 flex-col leading-tight lg:flex">
+        <span className="truncate text-sm font-semibold">{title}</span>
+        <span className="truncate text-xs text-muted-foreground">
+          {formatGregorianAndEthiopian(new Date())}
+        </span>
+      </div>
       <div className="ml-auto flex items-center gap-2">
         <GlobalSearch className="hidden sm:flex" />
         <NotificationsBell />

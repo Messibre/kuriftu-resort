@@ -14,7 +14,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { EmptyState } from "@/components/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type AuditEntry = {
   id?: number;
@@ -32,10 +35,24 @@ function formatTime(value?: string): string {
   return date.toLocaleString();
 }
 
+function formatDetails(details?: Record<string, unknown>): string {
+  if (!details || Object.keys(details).length === 0) return "No details";
+  const entries = Object.entries(details);
+  return entries
+    .map(([key, value]) => {
+      if (value === null || value === undefined) return `${key}: -`;
+      if (typeof value === "object") return `${key}: ${JSON.stringify(value)}`;
+      return `${key}: ${String(value)}`;
+    })
+    .join("\n");
+}
+
 export default function AuditLogPage() {
   const { toast } = useToast();
   const [items, setItems] = React.useState<AuditEntry[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [page, setPage] = React.useState(0);
+  const pageSize = 25;
   const [startDate, setStartDate] = React.useState("");
   const [endDate, setEndDate] = React.useState("");
   const [adminEmail, setAdminEmail] = React.useState("");
@@ -44,7 +61,10 @@ export default function AuditLogPage() {
   const load = React.useCallback(async () => {
     setIsLoading(true);
     try {
-      const params = new URLSearchParams({ limit: "300" });
+      const params = new URLSearchParams({
+        limit: String(pageSize),
+        offset: String(page * pageSize),
+      });
       if (startDate) params.set("start_date", startDate);
       if (endDate) params.set("end_date", endDate);
       if (adminEmail) params.set("admin_email", adminEmail);
@@ -63,7 +83,7 @@ export default function AuditLogPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [actionType, adminEmail, endDate, startDate, toast]);
+  }, [actionType, adminEmail, endDate, page, pageSize, startDate, toast]);
 
   React.useEffect(() => {
     void load();
@@ -127,19 +147,39 @@ export default function AuditLogPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Audit Events</CardTitle>
-              <CardDescription>{items.length} event(s)</CardDescription>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <CardTitle>Audit Events</CardTitle>
+                  <CardDescription>
+                    Page {page + 1} - {items.length} event(s)
+                  </CardDescription>
+                </div>
+                <Button variant="outline" onClick={() => void load()}>
+                  Refresh
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <p className="text-sm text-muted-foreground">
-                  Loading events...
-                </p>
+                <div className="space-y-3">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <div key={index} className="rounded-lg border p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <Skeleton className="h-4 w-44" />
+                        <Skeleton className="h-4 w-24" />
+                      </div>
+                      <Skeleton className="mt-3 h-3 w-28" />
+                      <Skeleton className="mt-3 h-20 w-full" />
+                    </div>
+                  ))}
+                </div>
               ) : null}
               {!isLoading && items.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No events found.
-                </p>
+                <EmptyState
+                  title="No audit events yet"
+                  description="Operational actions will appear here once admins start saving settings, publishing schedules, or adjusting promotions."
+                  className="py-10"
+                />
               ) : null}
               <div className="space-y-3">
                 {items.map((item, index) => (
@@ -163,11 +203,28 @@ export default function AuditLogPage() {
                     <p className="mt-1 text-xs text-muted-foreground">
                       IP: {item.ip_address ?? "-"}
                     </p>
-                    <pre className="mt-2 overflow-auto rounded bg-muted p-2 text-xs">
-                      {JSON.stringify(item.details ?? {}, null, 2)}
+                    <Separator className="my-2" />
+                    <pre className="overflow-auto rounded bg-muted p-2 text-xs whitespace-pre-wrap">
+                      {formatDetails(item.details)}
                     </pre>
                   </div>
                 ))}
+              </div>
+              <div className="mt-4 flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  disabled={page === 0 || isLoading}
+                  onClick={() => setPage((current) => Math.max(0, current - 1))}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={items.length < pageSize || isLoading}
+                  onClick={() => setPage((current) => current + 1)}
+                >
+                  Next
+                </Button>
               </div>
             </CardContent>
           </Card>

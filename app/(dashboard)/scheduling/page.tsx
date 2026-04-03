@@ -35,6 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   CalendarDays,
   CheckCircle2,
@@ -812,6 +813,17 @@ export default function SchedulingPage() {
                         </div>
                       </TableHead>
                     ))}
+                    {isLoading
+                      ? Array.from({ length: 4 }).map((_, rowIndex) => (
+                          <TableRow key={`schedule-skeleton-${rowIndex}`}>
+                            {Array.from({ length: 8 }).map((__, cellIndex) => (
+                              <TableCell key={cellIndex}>
+                                <Skeleton className="h-8 w-full" />
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))
+                      : null}
                   </TableRow>
                 </TableHeader>
                 <TableBody>

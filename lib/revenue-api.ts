@@ -1,4 +1,5 @@
 const API_BASE_PATH = "/api";
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
 const TOTAL_ROOMS = 60;
 const SHIFT_HOURS = 8;
@@ -89,6 +90,13 @@ interface PricingApprovalItem {
   date: string;
   approved_price?: number | null;
 }
+
+type CacheEntry<T> = {
+  expiresAt: number;
+  value: Promise<T>;
+};
+
+const revenueDatasetCache = new Map<string, CacheEntry<RevenueDataset>>();
 
 function formatDate(date: Date): string {
   const year = date.getFullYear();
@@ -360,46 +368,62 @@ export async function getRevenueDataset(
   customRange?: CustomRange,
 ): Promise<RevenueDataset> {
   const range = resolveRange(rangeKey, customRange);
+  const cacheKey = `${rangeKey}:${range.startDate}:${range.endDate}`;
+  const now = Date.now();
+  const cached = revenueDatasetCache.get(cacheKey);
 
-  try {
-    const dashboard = await requestJson<RevenueDashboardApiResponse>(
-      `/revenue/dashboard?start_date=${range.startDate}&end_date=${range.endDate}`,
-    );
-
-    const forecastData = await requestJson<ForecastApiResponse>("/forecast", {
-      method: "POST",
-      body: JSON.stringify({
-        horizon_days: range.days,
-        include_staffing: true,
-        total_rooms: TOTAL_ROOMS,
-      }),
-    });
-
-    const dailyData = withDepartmentLaborCosts(
-      dashboard.daily_data ?? [],
-      forecastData,
-    );
-
-    const accuracy = computeAccuracy(dailyData);
-
-    return {
-      range,
-      summary: dashboard.summary,
-      dailyData,
-      mape7: Number(accuracy.mape7.toFixed(2)),
-      mape30: Number(accuracy.mape30.toFixed(2)),
-      within10PctDays: Number(accuracy.within10PctDays.toFixed(2)),
-    };
-  } catch {
-    const computed = await fallbackComputeRevenue(range);
-
-    return {
-      range,
-      summary: computed.summary,
-      dailyData: computed.dailyData,
-      mape7: Number(computed.accuracy.mape7.toFixed(2)),
-      mape30: Number(computed.accuracy.mape30.toFixed(2)),
-      within10PctDays: Number(computed.accuracy.within10PctDays.toFixed(2)),
-    };
+  if (cached && cached.expiresAt > now) {
+    return cached.value;
   }
+
+  const request = (async () => {
+    try {
+      const dashboard = await requestJson<RevenueDashboardApiResponse>(
+        `/revenue/dashboard?start_date=${range.startDate}&end_date=${range.endDate}`,
+      );
+
+      const forecastData = await requestJson<ForecastApiResponse>("/forecast", {
+        method: "POST",
+        body: JSON.stringify({
+          horizon_days: range.days,
+          include_staffing: true,
+          total_rooms: TOTAL_ROOMS,
+        }),
+      });
+
+      const dailyData = withDepartmentLaborCosts(
+        dashboard.daily_data ?? [],
+        forecastData,
+      );
+
+      const accuracy = computeAccuracy(dailyData);
+
+      return {
+        range,
+        summary: dashboard.summary,
+        dailyData,
+        mape7: Number(accuracy.mape7.toFixed(2)),
+        mape30: Number(accuracy.mape30.toFixed(2)),
+        within10PctDays: Number(accuracy.within10PctDays.toFixed(2)),
+      };
+    } catch {
+      const computed = await fallbackComputeRevenue(range);
+
+      return {
+        range,
+        summary: computed.summary,
+        dailyData: computed.dailyData,
+        mape7: Number(computed.accuracy.mape7.toFixed(2)),
+        mape30: Number(computed.accuracy.mape30.toFixed(2)),
+        within10PctDays: Number(computed.accuracy.within10PctDays.toFixed(2)),
+      };
+    }
+  })();
+
+  revenueDatasetCache.set(cacheKey, {
+    expiresAt: now + CACHE_TTL_MS,
+    value: request,
+  });
+
+  return request;
 }

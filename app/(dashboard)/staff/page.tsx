@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertTriangle,
   Download,
@@ -835,6 +836,17 @@ export default function StaffPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {isLoading
+                    ? Array.from({ length: 4 }).map((_, rowIndex) => (
+                        <TableRow key={`staff-skeleton-${rowIndex}`}>
+                          {Array.from({ length: 14 }).map((__, cellIndex) => (
+                            <TableCell key={cellIndex}>
+                              <Skeleton className="h-8 w-full" />
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))
+                    : null}
                   {rows.length === 0 && !isLoading ? (
                     <TableRow>
                       <TableCell
