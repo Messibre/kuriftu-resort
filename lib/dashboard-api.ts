@@ -1,64 +1,88 @@
-const API_BASE_PATH = "/api"
+const API_BASE_PATH = "/api";
 
 export interface ForecastPoint {
-  date: string
-  predicted_rooms: number
-  lower_bound: number
-  upper_bound: number
-  demand_class: string
-  occupancy_percent: number
+  date: string;
+  predicted_rooms: number;
+  lower_bound: number;
+  upper_bound: number;
+  demand_class: string;
+  occupancy_percent: number;
 }
 
 export interface StaffingPoint {
-  date: string
-  housekeeping_staff: number
-  front_desk_staff: number
-  f_b_staff: number
-  maintenance_staff: number
-  total_staff_cost: number
+  date: string;
+  housekeeping_staff: number;
+  front_desk_staff: number;
+  f_b_staff: number;
+  maintenance_staff: number;
+  total_staff_cost: number;
 }
 
 export interface ForecastSummary {
-  avg_occupancy: number
-  high_demand_days: number
-  medium_demand_days: number
-  low_demand_days: number
-  peak_occupancy: number
-  peak_date: string
+  avg_occupancy: number;
+  high_demand_days: number;
+  medium_demand_days: number;
+  low_demand_days: number;
+  peak_occupancy: number;
+  peak_date: string;
 }
 
 export interface ForecastResponse {
-  forecasts: ForecastPoint[]
-  staffing: StaffingPoint[]
-  summary: ForecastSummary
+  forecasts: ForecastPoint[];
+  staffing: StaffingPoint[];
+  summary: ForecastSummary;
+}
+
+interface RawStaffingDetails {
+  recommended_staff?: {
+    housekeeping?: number;
+    front_desk?: number;
+    f_and_b?: number;
+    maintenance?: number;
+  };
+  total_labor_cost?: number;
+}
+
+interface RawForecastPrediction {
+  date: string;
+  predicted_rooms: number;
+  lower_bound: number;
+  upper_bound: number;
+  demand_class: string;
+  occupancy_percentage: number;
+  staffing?: RawStaffingDetails;
+}
+
+interface RawForecastResponse {
+  predictions: RawForecastPrediction[];
 }
 
 export interface DashboardEvent {
-  id: string
-  title: string
-  date: string
-  description?: string
-  kind: "event" | "holiday"
+  id: string;
+  title: string;
+  date: string;
+  description?: string;
+  kind: "event" | "holiday";
 }
 
 export interface DashboardPromotion {
-  id: string
-  title: string
-  description: string
-  startDate: string
-  endDate: string
-  discountPercent: number
-  isActive: boolean
+  id: string;
+  title: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  discountPercent: number;
+  isActive: boolean;
 }
 
 interface PromotionApiItem {
-  id: number | string
-  title: string
-  description: string
-  start_date: string
-  end_date: string
-  discount_percent: number
-  is_active: boolean
+  id: number | string;
+  title: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+  discount_percent: number;
+  is_active: boolean;
 }
 
 function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -70,89 +94,157 @@ function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
     },
   }).then(async (response) => {
     if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`)
+      throw new Error(`Request failed with status ${response.status}`);
     }
 
-    const text = await response.text()
+    const text = await response.text();
     if (!text) {
-      return undefined as T
+      return undefined as T;
     }
 
-    return JSON.parse(text) as T
-  })
+    return JSON.parse(text) as T;
+  });
 }
 
 export function getForecastData(): Promise<ForecastResponse> {
-  return requestJson<ForecastResponse>("/forecast", {
+  return requestJson<RawForecastResponse>("/forecast", {
     method: "POST",
     body: JSON.stringify({
       horizon_days: 30,
       include_staffing: true,
       total_rooms: 60,
     }),
-  })
+  }).then((response) => {
+    const forecasts: ForecastPoint[] = (response.predictions ?? []).map(
+      (item) => ({
+        date: item.date,
+        predicted_rooms: item.predicted_rooms,
+        lower_bound: item.lower_bound,
+        upper_bound: item.upper_bound,
+        demand_class: item.demand_class,
+        occupancy_percent: item.occupancy_percentage,
+      }),
+    );
+
+    const staffing: StaffingPoint[] = (response.predictions ?? []).map(
+      (item) => {
+        const recommended = item.staffing?.recommended_staff;
+        return {
+          date: item.date,
+          housekeeping_staff: recommended?.housekeeping ?? 0,
+          front_desk_staff: recommended?.front_desk ?? 0,
+          f_b_staff: recommended?.f_and_b ?? 0,
+          maintenance_staff: recommended?.maintenance ?? 0,
+          total_staff_cost: item.staffing?.total_labor_cost ?? 0,
+        };
+      },
+    );
+
+    const occupancyValues = forecasts.map((item) => item.occupancy_percent);
+    const avgOccupancy =
+      occupancyValues.length > 0
+        ? occupancyValues.reduce((sum, value) => sum + value, 0) /
+          occupancyValues.length
+        : 0;
+
+    let peakOccupancy = 0;
+    let peakDate = "";
+    for (const item of forecasts) {
+      if (item.occupancy_percent > peakOccupancy) {
+        peakOccupancy = item.occupancy_percent;
+        peakDate = item.date;
+      }
+    }
+
+    const summary: ForecastSummary = {
+      avg_occupancy: Number(avgOccupancy.toFixed(2)),
+      high_demand_days: forecasts.filter((item) => item.demand_class === "high")
+        .length,
+      medium_demand_days: forecasts.filter(
+        (item) => item.demand_class === "medium",
+      ).length,
+      low_demand_days: forecasts.filter((item) => item.demand_class === "low")
+        .length,
+      peak_occupancy: Number(peakOccupancy.toFixed(2)),
+      peak_date: peakDate,
+    };
+
+    return {
+      forecasts,
+      staffing,
+      summary,
+    };
+  });
 }
 
-type UnknownRecord = Record<string, unknown>
+type UnknownRecord = Record<string, unknown>;
 
 function parseItemDate(item: UnknownRecord): string {
-  const value = item.date ?? item.event_date ?? item.holiday_date
-  return typeof value === "string" ? value : ""
+  const value = item.date ?? item.event_date ?? item.holiday_date;
+  return typeof value === "string" ? value : "";
 }
 
 function parseItemTitle(item: UnknownRecord, fallback: string): string {
-  const value = item.title ?? item.name ?? item.holiday_name ?? item.event_name
-  return typeof value === "string" && value.trim() ? value : fallback
+  const value = item.title ?? item.name ?? item.holiday_name ?? item.event_name;
+  return typeof value === "string" && value.trim() ? value : fallback;
 }
 
-export async function getUpcomingEventsAndHolidays(): Promise<DashboardEvent[]> {
-  const today = new Date()
-  const startDate = today.toISOString().slice(0, 10)
-  const endDateObj = new Date(today)
-  endDateObj.setDate(endDateObj.getDate() + 60)
-  const endDate = endDateObj.toISOString().slice(0, 10)
+export async function getUpcomingEventsAndHolidays(): Promise<
+  DashboardEvent[]
+> {
+  const today = new Date();
+  const startDate = today.toISOString().slice(0, 10);
+  const endDateObj = new Date(today);
+  endDateObj.setDate(endDateObj.getDate() + 60);
+  const endDate = endDateObj.toISOString().slice(0, 10);
 
   const [eventsRaw, holidaysRaw] = await Promise.all([
-    requestJson<unknown[]>(`/events?start_date=${startDate}&end_date=${endDate}`).catch(() => []),
-    requestJson<unknown[]>(`/ethiopian_holidays?year=${today.getFullYear()}`).catch(() => []),
-  ])
+    requestJson<unknown[]>(
+      `/events?start_date=${startDate}&end_date=${endDate}`,
+    ).catch(() => []),
+    requestJson<unknown[]>(
+      `/ethiopian_holidays?year=${today.getFullYear()}`,
+    ).catch(() => []),
+  ]);
 
   const events: DashboardEvent[] = (eventsRaw as UnknownRecord[])
     .map((item, index) => {
-      const date = parseItemDate(item)
+      const date = parseItemDate(item);
       return {
         id: String(item.id ?? `event-${index}`),
         title: parseItemTitle(item, "Upcoming event"),
         date,
-        description: typeof item.description === "string" ? item.description : undefined,
+        description:
+          typeof item.description === "string" ? item.description : undefined,
         kind: "event" as const,
-      }
+      };
     })
-    .filter((item) => item.date)
+    .filter((item) => item.date);
 
   const holidays: DashboardEvent[] = (holidaysRaw as UnknownRecord[])
     .map((item, index) => {
-      const date = parseItemDate(item)
+      const date = parseItemDate(item);
       return {
         id: String(item.id ?? `holiday-${index}`),
         title: parseItemTitle(item, "Holiday"),
         date,
-        description: typeof item.description === "string" ? item.description : undefined,
+        description:
+          typeof item.description === "string" ? item.description : undefined,
         kind: "holiday" as const,
-      }
+      };
     })
-    .filter((item) => item.date)
+    .filter((item) => item.date);
 
   return [...events, ...holidays]
     .filter((item) => item.date >= startDate)
     .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 8)
+    .slice(0, 8);
 }
 
 export async function getActivePromotions(): Promise<DashboardPromotion[]> {
-  const response = await requestJson<{ promotions: PromotionApiItem[] }>("/admin/promotions").catch(
-    () => requestJson<{ promotions: PromotionApiItem[] }>("/promotions"),
-  )
+  const response = await requestJson<{ promotions: PromotionApiItem[] }>(
+    "/admin/promotions",
+  ).catch(() => requestJson<{ promotions: PromotionApiItem[] }>("/promotions"));
 
   return response.promotions
     .filter((item) => item.is_active)
@@ -165,5 +257,5 @@ export async function getActivePromotions(): Promise<DashboardPromotion[]> {
       discountPercent: item.discount_percent,
       isActive: item.is_active,
     }))
-    .slice(0, 3)
+    .slice(0, 3);
 }
