@@ -1,23 +1,21 @@
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/app-sidebar"
-import { AIChatbot } from "@/components/ai-chatbot"
-import { Toaster } from "@/components/ui/toaster"
-import { CommandPalette } from "@/components/command-palette"
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
+import { ChatAssistantLauncher } from "@/components/chat-assistant-launcher";
+import { Toaster } from "@/components/ui/toaster";
+import { CommandPalette } from "@/components/command-palette";
 
 export default function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
-        {children}
-      </SidebarInset>
-      <AIChatbot />
+      <SidebarInset>{children}</SidebarInset>
+      <ChatAssistantLauncher />
       <Toaster />
       <CommandPalette />
     </SidebarProvider>
-  )
+  );
 }

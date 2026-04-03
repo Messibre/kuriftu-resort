@@ -132,7 +132,11 @@ function normalizeStaffDepartment(rawDepartment: string): StaffDepartment {
   if (value.includes("front")) {
     return "front_desk";
   }
-  if (value === "f_b" || value.includes("restaurant") || value.includes("food")) {
+  if (
+    value === "f_b" ||
+    value.includes("restaurant") ||
+    value.includes("food")
+  ) {
     return "f_b";
   }
   if (value.includes("maint")) {

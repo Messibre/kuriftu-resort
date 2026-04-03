@@ -669,9 +669,7 @@ export default function StaffPage() {
             <div className="flex flex-wrap items-center gap-3">
               <Select
                 value={rangeKey}
-                onValueChange={(value) =>
-                  setRangeKey(value as RangeKey)
-                }
+                onValueChange={(value) => setRangeKey(value as RangeKey)}
               >
                 <SelectTrigger className="w-[190px]">
                   <SelectValue placeholder="Date range" />
