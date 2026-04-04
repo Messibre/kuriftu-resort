@@ -32,6 +32,20 @@ function timeAgo(value: string): string {
   return `${days}d ago`;
 }
 
+function TimeAgo({ timestamp }: { timestamp: string }) {
+  const [timeAgoStr, setTimeAgoStr] = React.useState(() => timeAgo(timestamp));
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeAgoStr(timeAgo(timestamp));
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [timestamp]);
+
+  return <span>{timeAgoStr}</span>;
+}
+
 export function NotificationsBell() {
   const router = useRouter();
   const [items, setItems] = React.useState<NotificationItem[]>([]);
@@ -144,7 +158,7 @@ export function NotificationsBell() {
                     {item.message}
                   </p>
                   <p className="mt-1 text-[10px] text-muted-foreground">
-                    {timeAgo(item.created_at)}
+                    <TimeAgo timestamp={item.created_at} />
                   </p>
                 </div>
               </div>
