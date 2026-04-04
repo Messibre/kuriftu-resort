@@ -59,6 +59,20 @@ function formatTimeAgo(value: string): string {
   return `${Math.floor(diffMinutes / 1440)}d ago`;
 }
 
+function TimeAgo({ timestamp }: { timestamp: string }) {
+  const [timeAgo, setTimeAgo] = React.useState(() => formatTimeAgo(timestamp));
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeAgo(formatTimeAgo(timestamp));
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [timestamp]);
+
+  return <span>{timeAgo}</span>;
+}
+
 function formatActivityType(action: string): ActivityType {
   if (action.includes("schedule")) return "schedule";
   if (action.includes("feedback")) return "feedback";
@@ -200,7 +214,7 @@ export function ActivityLog() {
                         {activity.action}
                       </p>
                       <Badge variant="outline" className="shrink-0 text-[10px]">
-                        {formatTimeAgo(activity.created_at)}
+                        <TimeAgo timestamp={activity.created_at} />
                       </Badge>
                     </div>
                     {formatActivityDetails(activity.details) ? (
@@ -229,6 +243,23 @@ export function ActivityLog() {
 
 // Compact widget version for dashboard
 export function ActivityLogWidget() {
+  const [activities, setActivities] = React.useState<AuditItem[]>([]);
+
+  const load = React.useCallback(async () => {
+    try {
+      const response = await fetch("/api/admin/audit-log?limit=5");
+      if (!response.ok) return;
+      const data = (await response.json()) as { audit_log?: AuditItem[] };
+      setActivities(data.audit_log ?? []);
+    } catch {
+      setActivities([]);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void load();
+  }, [load]);
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -256,7 +287,7 @@ export function ActivityLogWidget() {
                 <div className="flex-1 truncate">
                   <p className="truncate text-sm">{activity.action}</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatTimeAgo(activity.created_at)}
+                    <TimeAgo timestamp={activity.created_at} />
                   </p>
                 </div>
               </div>
