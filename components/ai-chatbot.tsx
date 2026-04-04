@@ -80,7 +80,7 @@ export function AIChatbot({ isOpen, onClose }: AIChatbotProps) {
   }
 
   return (
-    <div className="fixed bottom-24 right-4 z-50 flex h-[500px] w-[384px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl sm:right-6">
+    <div className="fixed bottom-24 right-4 z-50 flex h-[500px] w-[384px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl overscroll-contain sm:right-6">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <div
@@ -113,7 +113,7 @@ export function AIChatbot({ isOpen, onClose }: AIChatbotProps) {
         </div>
       </div>
 
-      <ScrollArea className="flex-1 px-3 py-4">
+      <ScrollArea className="min-h-0 flex-1 px-3 py-4">
         <div className="flex flex-col gap-3">
           {messages.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 text-sm">

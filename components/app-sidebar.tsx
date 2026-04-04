@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
+  LineChart,
   Tag,
   MessageSquareText,
   BarChart3,
@@ -43,6 +44,11 @@ const mainNavItems = [
     title: "Dashboard",
     url: "/",
     icon: LayoutDashboard,
+  },
+  {
+    title: "Prediction & Pricing",
+    url: "/prediction-pricing",
+    icon: LineChart,
   },
   {
     title: "Promotions",
