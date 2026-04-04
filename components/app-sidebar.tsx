@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -8,7 +9,6 @@ import {
   Tag,
   MessageSquareText,
   BarChart3,
-  Bot,
   Calendar,
   Users,
   Bell,
@@ -105,11 +105,17 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/">
-                <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <Bot className="size-4" />
+                <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground overflow-hidden">
+                  <Image
+                    src="/Gezana.jpg"
+                    alt="Gezana"
+                    width={32}
+                    height={32}
+                    className="rounded-lg object-cover"
+                  />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold">ResortAI</span>
+                  <span className="font-semibold">Gezana Solution</span>
                   <span className="text-xs text-muted-foreground">
                     Admin Panel
                   </span>
