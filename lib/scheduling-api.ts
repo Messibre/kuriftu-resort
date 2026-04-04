@@ -2,6 +2,7 @@ import {
   getForecastStaffing,
   type StaffDepartment,
 } from "@/lib/staff-recommendation-api";
+import { useQuery } from "@tanstack/react-query";
 
 export type { StaffDepartment };
 
@@ -415,6 +416,7 @@ export async function generateSchedule(
   weekStart: string,
   staff: StaffMember[],
   overrides: OverrideApiItem[],
+  forecastData?: Awaited<ReturnType<typeof getForecastStaffing>>,
 ): Promise<ScheduleEntry[]> {
   try {
     const data = await requestJson<GenerateApiResponse>(
@@ -432,7 +434,8 @@ export async function generateSchedule(
     // fallback below
   }
 
-  const recommended = await getForecastStaffing(7, TOTAL_ROOMS);
+  const recommended =
+    forecastData || (await getForecastStaffing(7, TOTAL_ROOMS));
   const approvedByDate = applyOverridesToRecommended(recommended, overrides);
   const generated = generateScheduleFromInputs(
     weekStart,
@@ -506,4 +509,37 @@ export async function publishWeeklySchedule(
       usedFallback: true,
     };
   }
+}
+
+// React Query hooks
+export function useAdminStaffList() {
+  return useQuery({
+    queryKey: ["adminStaffList"],
+    queryFn: getAdminStaffList,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  });
+}
+
+export function useApprovedOverrides(startDate: string, endDate: string) {
+  return useQuery({
+    queryKey: ["approvedOverrides", startDate, endDate],
+    queryFn: () => getApprovedOverrides(startDate, endDate),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+export function useExistingSchedule(weekStart: string) {
+  return useQuery({
+    queryKey: ["existingSchedule", weekStart],
+    queryFn: () => getExistingSchedule(weekStart),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useForecastStaffing(horizonDays: number, totalRooms: number) {
+  return useQuery({
+    queryKey: ["forecastStaffing", horizonDays, totalRooms],
+    queryFn: () => getForecastStaffing(horizonDays, totalRooms),
+    staleTime: 5 * 60 * 1000,
+  });
 }

@@ -25,6 +25,7 @@ export async function POST(request: Request) {
     headers: {
       "Content-Type":
         upstreamResponse.headers.get("Content-Type") ?? "application/json",
+      "Cache-Control": "public, max-age=600", // Cache for 10 minutes
     },
   });
 }

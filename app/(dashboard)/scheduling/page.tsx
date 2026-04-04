@@ -64,6 +64,10 @@ import {
   type ShiftKey,
   type StaffDepartment,
   type StaffMember,
+  useAdminStaffList,
+  useApprovedOverrides,
+  useExistingSchedule,
+  useForecastStaffing,
 } from "@/lib/scheduling-api";
 
 const DEPARTMENT_LABELS: Record<StaffDepartment, string> = {
@@ -291,9 +295,7 @@ function exportSchedulePdf(
 
 export default function SchedulingPage() {
   const [weekStart, setWeekStart] = React.useState(getDefaultWeekStart());
-  const [weekDates, setWeekDates] = React.useState<string[]>([]);
   const [rows, setRows] = React.useState<StaffRow[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isPublishing, setIsPublishing] = React.useState(false);
@@ -307,6 +309,76 @@ export default function SchedulingPage() {
   } | null>(null);
   const [isPublishDialogOpen, setIsPublishDialogOpen] = React.useState(false);
 
+  const bounds = React.useMemo(() => getWeekBounds(weekStart), [weekStart]);
+  const weekDates = bounds.dates;
+
+  const staffQuery = useAdminStaffList();
+  const overridesQuery = useApprovedOverrides(bounds.startDate, bounds.endDate);
+  const existingQuery = useExistingSchedule(weekStart);
+  const forecastQuery = useForecastStaffing(7, 60); // Assuming TOTAL_ROOMS = 60
+
+  const isLoading =
+    staffQuery.isLoading ||
+    overridesQuery.isLoading ||
+    existingQuery.isLoading ||
+    forecastQuery.isLoading;
+  const isError =
+    staffQuery.isError ||
+    overridesQuery.isError ||
+    existingQuery.isError ||
+    forecastQuery.isError;
+
+  React.useEffect(() => {
+    if (isLoading || isError) return;
+
+    const loadData = async () => {
+      const staff = staffQuery.data || [];
+      const overrides = overridesQuery.data || [];
+      const existing = existingQuery.data || [];
+
+      try {
+        const baseSchedule =
+          existing.length > 0
+            ? existing
+            : await generateSchedule(
+                weekStart,
+                staff,
+                overrides,
+                forecastQuery.data,
+              );
+
+        const { rows: builtRows, flattened } = toRows(
+          weekStart,
+          bounds.dates,
+          staff,
+          baseSchedule,
+        );
+        saveLocalScheduleSnapshot(weekStart, flattened);
+
+        setRows(builtRows);
+        setPublishResult(null);
+      } catch {
+        toast({
+          title: "Unable to load schedule",
+          description: "Please refresh and try again.",
+          variant: "destructive",
+        });
+        setRows([]);
+      }
+    };
+
+    loadData();
+  }, [
+    isLoading,
+    isError,
+    staffQuery.data,
+    overridesQuery.data,
+    existingQuery.data,
+    forecastQuery.data,
+    weekStart,
+    bounds.dates,
+  ]);
+
   const selectedCell = React.useMemo(() => {
     if (!editingCell) {
       return null;
@@ -317,50 +389,6 @@ export default function SchedulingPage() {
     }
     return { row, cell: row.cells[editingCell.date], date: editingCell.date };
   }, [editingCell, rows]);
-
-  const loadWeek = React.useCallback(async () => {
-    setIsLoading(true);
-
-    try {
-      const bounds = getWeekBounds(weekStart);
-      const [staff, overrides, existing] = await Promise.all([
-        getAdminStaffList(),
-        getApprovedOverrides(bounds.startDate, bounds.endDate),
-        getExistingSchedule(weekStart),
-      ]);
-
-      const baseSchedule =
-        existing.length > 0
-          ? existing
-          : await generateSchedule(weekStart, staff, overrides);
-
-      const { rows: builtRows, flattened } = toRows(
-        weekStart,
-        bounds.dates,
-        staff,
-        baseSchedule,
-      );
-      saveLocalScheduleSnapshot(weekStart, flattened);
-
-      setRows(builtRows);
-      setWeekDates(bounds.dates);
-      setPublishResult(null);
-    } catch {
-      toast({
-        title: "Unable to load schedule",
-        description: "Please refresh and try again.",
-        variant: "destructive",
-      });
-      setRows([]);
-      setWeekDates(getWeekBounds(weekStart).dates);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [weekStart]);
-
-  React.useEffect(() => {
-    void loadWeek();
-  }, [loadWeek]);
 
   const unsavedCount = React.useMemo(() => {
     return rows.reduce((sum, row) => {
@@ -509,8 +537,8 @@ export default function SchedulingPage() {
         ),
       );
 
-      setRows((current) =>
-        current.map((row) => {
+      setRows((current) => {
+        const nextRows = current.map((row) => {
           const nextCells: StaffRow["cells"] = { ...row.cells };
           for (const date of weekDates) {
             const cell = nextCells[date];
@@ -521,10 +549,12 @@ export default function SchedulingPage() {
             };
           }
           return { ...row, cells: nextCells };
-        }),
-      );
+        });
 
-      saveLocalScheduleSnapshot(weekStart, flattenRows(rows, weekDates));
+        saveLocalScheduleSnapshot(weekStart, flattenRows(nextRows, weekDates));
+        return nextRows;
+      });
+
       toast({
         title: "Schedule saved",
         description: `${dirtyCells.length} shift change(s) saved.`,

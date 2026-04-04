@@ -1,5 +1,5 @@
 const API_BASE_PATH = "/api";
-const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_TTL_MS = 10 * 60 * 1000; // Increased to 10 minutes
 
 const LOCAL_OVERRIDE_STORAGE_KEY = "staff-overrides-v1";
 
