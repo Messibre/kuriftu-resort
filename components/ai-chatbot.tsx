@@ -155,6 +155,14 @@ export function AIChatbot({ isOpen, onClose }: AIChatbotProps) {
                 <p className="whitespace-pre-wrap text-sm">{message.content}</p>
                 {message.role === "assistant" ? (
                   <div className="mt-1 flex items-center gap-2">
+                    {message.isFallback ? (
+                      <Badge
+                        variant="destructive"
+                        className="h-5 px-1.5 text-[10px]"
+                      >
+                        Backend fallback
+                      </Badge>
+                    ) : null}
                     {message.isGrounded === true ? (
                       <Badge
                         variant="secondary"
@@ -225,6 +233,9 @@ export function AIChatbot({ isOpen, onClose }: AIChatbotProps) {
               : "Disconnected from assistant"}
           </span>
           <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground">
+              Questions are sent live to the backend over WebSocket.
+            </span>
             {!isConnected ? (
               <Button
                 variant="outline"

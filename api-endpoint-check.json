@@ -1,0 +1,363 @@
+{
+  "base_url": "https://resort-forecast-api.onrender.com",
+  "checked_at_utc": "2026-04-03T22:57:22.475Z",
+  "endpoint_count": 50,
+  "status_buckets": {
+    "200": 34,
+    "401": 1,
+    "422": 12,
+    "500": 3
+  },
+  "results": [
+    {
+      "method": "GET",
+      "path": "/admin/settings",
+      "probed_url": "https://resort-forecast-api.onrender.com/admin/settings",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "PUT",
+      "path": "/admin/settings",
+      "probed_url": "https://resort-forecast-api.onrender.com/admin/settings",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/staffing-ratios",
+      "probed_url": "https://resort-forecast-api.onrender.com/admin/staffing-ratios",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "PUT",
+      "path": "/admin/staffing-ratios",
+      "probed_url": "https://resort-forecast-api.onrender.com/admin/staffing-ratios",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/notification-preferences",
+      "probed_url": "https://resort-forecast-api.onrender.com/admin/notification-preferences",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "PUT",
+      "path": "/admin/notification-preferences",
+      "probed_url": "https://resort-forecast-api.onrender.com/admin/notification-preferences",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/notifications",
+      "probed_url": "https://resort-forecast-api.onrender.com/notifications",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "PUT",
+      "path": "/notifications/{notification_id}/read",
+      "probed_url": "https://resort-forecast-api.onrender.com/notifications/1/read",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "PUT",
+      "path": "/notifications/read-all",
+      "probed_url": "https://resort-forecast-api.onrender.com/notifications/read-all",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "DELETE",
+      "path": "/notifications/{notification_id}",
+      "probed_url": "https://resort-forecast-api.onrender.com/notifications/1",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "DELETE",
+      "path": "/notifications/clear-all",
+      "probed_url": "https://resort-forecast-api.onrender.com/notifications/clear-all",
+      "status": 422,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/export/forecast",
+      "probed_url": "https://resort-forecast-api.onrender.com/export/forecast?start_date=2026-03-27&end_date=2026-04-03",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/export/staffing",
+      "probed_url": "https://resort-forecast-api.onrender.com/export/staffing?start_date=2026-03-27&end_date=2026-04-03",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/export/feedback",
+      "probed_url": "https://resort-forecast-api.onrender.com/export/feedback?start_date=2026-03-27&end_date=2026-04-03",
+      "status": 500,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/export/promotions",
+      "probed_url": "https://resort-forecast-api.onrender.com/export/promotions?start_date=2026-03-27&end_date=2026-04-03",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/audit-log",
+      "probed_url": "https://resort-forecast-api.onrender.com/admin/audit-log",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/health/system",
+      "probed_url": "https://resort-forecast-api.onrender.com/health/system",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/backup",
+      "probed_url": "https://resort-forecast-api.onrender.com/admin/backup",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "POST",
+      "path": "/staff-override",
+      "probed_url": "https://resort-forecast-api.onrender.com/staff-override",
+      "status": 422,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/staff-override",
+      "probed_url": "https://resort-forecast-api.onrender.com/staff-override?start_date=2026-03-27&end_date=2026-04-03",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/health",
+      "probed_url": "https://resort-forecast-api.onrender.com/health",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/",
+      "probed_url": "https://resort-forecast-api.onrender.com/",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "POST",
+      "path": "/reload",
+      "probed_url": "https://resort-forecast-api.onrender.com/reload",
+      "status": 401,
+      "note": "ok"
+    },
+    {
+      "method": "POST",
+      "path": "/override",
+      "probed_url": "https://resort-forecast-api.onrender.com/override",
+      "status": 422,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/feedback",
+      "probed_url": "https://resort-forecast-api.onrender.com/feedback",
+      "status": 500,
+      "note": "ok"
+    },
+    {
+      "method": "POST",
+      "path": "/feedback",
+      "probed_url": "https://resort-forecast-api.onrender.com/feedback",
+      "status": 422,
+      "note": "ok"
+    },
+    {
+      "method": "POST",
+      "path": "/forecast",
+      "probed_url": "https://resort-forecast-api.onrender.com/forecast",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/forecast/today",
+      "probed_url": "https://resort-forecast-api.onrender.com/forecast/today",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/events",
+      "probed_url": "https://resort-forecast-api.onrender.com/events",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/ethiopian_holidays",
+      "probed_url": "https://resort-forecast-api.onrender.com/ethiopian_holidays",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/staff",
+      "probed_url": "https://resort-forecast-api.onrender.com/admin/staff",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/staff",
+      "probed_url": "https://resort-forecast-api.onrender.com/admin/staff",
+      "status": 422,
+      "note": "ok"
+    },
+    {
+      "method": "PUT",
+      "path": "/admin/staff/{staff_id}",
+      "probed_url": "https://resort-forecast-api.onrender.com/admin/staff/1",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "DELETE",
+      "path": "/admin/staff/{staff_id}",
+      "probed_url": "https://resort-forecast-api.onrender.com/admin/staff/1",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/schedule",
+      "probed_url": "https://resort-forecast-api.onrender.com/admin/schedule?start_date=2026-03-27&end_date=2026-04-03",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "PUT",
+      "path": "/admin/schedule",
+      "probed_url": "https://resort-forecast-api.onrender.com/admin/schedule?schedule_id=1&shift_start=1&shift_end=1",
+      "status": 500,
+      "note": "ok"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/schedule/generate",
+      "probed_url": "https://resort-forecast-api.onrender.com/admin/schedule/generate",
+      "status": 422,
+      "note": "ok"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/schedule/publish",
+      "probed_url": "https://resort-forecast-api.onrender.com/admin/schedule/publish",
+      "status": 422,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/pricing-rules",
+      "probed_url": "https://resort-forecast-api.onrender.com/admin/pricing-rules",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "PUT",
+      "path": "/admin/pricing-rules",
+      "probed_url": "https://resort-forecast-api.onrender.com/admin/pricing-rules",
+      "status": 422,
+      "note": "ok"
+    },
+    {
+      "method": "POST",
+      "path": "/pricing/suggest",
+      "probed_url": "https://resort-forecast-api.onrender.com/pricing/suggest",
+      "status": 422,
+      "note": "ok"
+    },
+    {
+      "method": "POST",
+      "path": "/pricing/approve",
+      "probed_url": "https://resort-forecast-api.onrender.com/pricing/approve",
+      "status": 422,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/daily_occupancy",
+      "probed_url": "https://resort-forecast-api.onrender.com/daily_occupancy",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/pricing/approvals",
+      "probed_url": "https://resort-forecast-api.onrender.com/pricing/approvals",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/revenue/dashboard",
+      "probed_url": "https://resort-forecast-api.onrender.com/revenue/dashboard",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/promotions",
+      "probed_url": "https://resort-forecast-api.onrender.com/promotions",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "POST",
+      "path": "/promotions",
+      "probed_url": "https://resort-forecast-api.onrender.com/promotions",
+      "status": 422,
+      "note": "ok"
+    },
+    {
+      "method": "PUT",
+      "path": "/promotions/{promotion_id}",
+      "probed_url": "https://resort-forecast-api.onrender.com/promotions/1",
+      "status": 422,
+      "note": "ok"
+    },
+    {
+      "method": "DELETE",
+      "path": "/promotions/{promotion_id}",
+      "probed_url": "https://resort-forecast-api.onrender.com/promotions/1",
+      "status": 200,
+      "note": "ok"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/promotions",
+      "probed_url": "https://resort-forecast-api.onrender.com/admin/promotions",
+      "status": 200,
+      "note": "ok"
+    }
+  ]
+}

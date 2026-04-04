@@ -9,6 +9,7 @@ export interface ChatMessage {
   timestamp: string;
   sourceTables?: string[];
   isGrounded?: boolean;
+  isFallback?: boolean;
 }
 
 interface ServerIncomingMessage {
@@ -16,6 +17,7 @@ interface ServerIncomingMessage {
   content?: string;
   message?: string;
   text?: string;
+  error?: string;
   session_id?: string;
   source_tables?: string[];
   sources?: string[];
@@ -207,6 +209,12 @@ export function useChatWebSocket(): UseChatWebSocketResult {
               : Array.isArray(parsed.sources)
                 ? parsed.sources.length > 0
                 : undefined,
+        isFallback:
+          content.toLowerCase().includes("i could not reach gemini") ||
+          content
+            .toLowerCase()
+            .includes("could not reach an available gemini model") ||
+          content.toLowerCase().includes("gemini sdk is not available"),
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
