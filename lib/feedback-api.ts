@@ -27,6 +27,8 @@ interface FeedbackListResponse {
   feedback: FeedbackApiItem[];
 }
 
+type FeedbackListLike = FeedbackListResponse | FeedbackApiItem[];
+
 interface FeedbackMutationResponse {
   success: boolean;
 }
@@ -47,7 +49,21 @@ export interface CreateFeedbackInput {
 }
 
 function createLocalDate(dateValue: string): Date {
-  const [year, month, day] = dateValue.split("-").map(Number);
+  const isoSlice = String(dateValue).slice(0, 10);
+  const [year, month, day] = isoSlice.split("-").map(Number);
+
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day)
+  ) {
+    const fallback = new Date(dateValue);
+    if (!Number.isNaN(fallback.getTime())) {
+      return fallback;
+    }
+    return new Date();
+  }
+
   return new Date(year, month - 1, day);
 }
 
@@ -69,6 +85,18 @@ function mapFeedback(item: FeedbackApiItem): FeedbackItem {
     sentiment: item.sentiment,
     source: item.source ?? "admin",
   };
+}
+
+function normalizeFeedbackList(data: FeedbackListLike): FeedbackApiItem[] {
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (data && Array.isArray(data.feedback)) {
+    return data.feedback;
+  }
+
+  return [];
 }
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -110,9 +138,10 @@ export async function getFeedback(
   }
 
   const query = params.toString() ? `?${params.toString()}` : "";
-  const data = await requestJson<FeedbackListResponse>(query);
+  const data = await requestJson<FeedbackListLike>(query);
+  const feedbackList = normalizeFeedbackList(data);
 
-  return data.feedback
+  return feedbackList
     .map(mapFeedback)
     .sort((a, b) => b.date.getTime() - a.date.getTime());
 }

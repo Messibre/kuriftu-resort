@@ -4,6 +4,8 @@ import * as React from "react";
 import { format } from "date-fns";
 import {
   CalendarIcon,
+  ChevronDown,
+  ChevronUp,
   Download,
   Eye,
   Pencil,
@@ -114,6 +116,7 @@ export function PromotionsManager() {
   const [formState, setFormState] =
     React.useState<PromotionFormState>(defaultFormState);
   const [showAllPromotions, setShowAllPromotions] = React.useState(false);
+  const [isFormExpanded, setIsFormExpanded] = React.useState(false);
   const { toast } = useToast();
 
   const loadPromotions = React.useCallback(async () => {
@@ -140,11 +143,13 @@ export function PromotionsManager() {
   const resetForm = () => {
     setEditingPromotion(null);
     setFormState(defaultFormState);
+    setIsFormExpanded(false);
   };
 
   const openEdit = (promotion: Promotion) => {
     setEditingPromotion(promotion);
     setFormState(buildFormState(promotion));
+    setIsFormExpanded(true);
   };
 
   const handleRoomTypeChange = (
@@ -320,202 +325,233 @@ export function PromotionsManager() {
         <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
           <Card className="border-primary/30">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Plus className="size-5 text-primary" />
-                {editingPromotion ? "Edit Promotion" : "Create New Promotion"}
-              </CardTitle>
-              <CardDescription>
-                Fill in the details to {editingPromotion ? "update" : "create"}{" "}
-                a promotion
-              </CardDescription>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Plus className="size-5 text-primary" />
+                    {editingPromotion
+                      ? "Edit Promotion"
+                      : "Create New Promotion"}
+                  </CardTitle>
+                  <CardDescription>
+                    {isFormExpanded
+                      ? `Fill in the details to ${
+                          editingPromotion ? "update" : "create"
+                        } a promotion`
+                      : "Form is collapsed. Open it when you want to create a promotion."}
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsFormExpanded((current) => !current)}
+                >
+                  {isFormExpanded ? (
+                    <>
+                      <ChevronUp className="mr-2 size-4" />
+                      Collapse
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="mr-2 size-4" />
+                      Add New Promotion
+                    </>
+                  )}
+                </Button>
+              </div>
             </CardHeader>
 
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="title">Title</Label>
-                <Input
-                  id="title"
-                  value={formState.title}
-                  onChange={(event) =>
-                    setFormState((current) => ({
-                      ...current,
-                      title: event.target.value,
-                    }))
-                  }
-                  placeholder="Weekend Special"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formState.description}
-                  onChange={(event) =>
-                    setFormState((current) => ({
-                      ...current,
-                      description: event.target.value,
-                    }))
-                  }
-                  rows={3}
-                  placeholder="Describe your promotion..."
-                />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
+            {isFormExpanded ? (
+              <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label>Start Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !formState.startDate && "text-muted-foreground",
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 size-4" />
-                        {formState.startDate
-                          ? format(formState.startDate, "PPP")
-                          : "Pick a date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={formState.startDate}
-                        onSelect={(date) =>
-                          setFormState((current) => ({
-                            ...current,
-                            startDate: date,
-                          }))
-                        }
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <Label htmlFor="title">Title</Label>
+                  <Input
+                    id="title"
+                    value={formState.title}
+                    onChange={(event) =>
+                      setFormState((current) => ({
+                        ...current,
+                        title: event.target.value,
+                      }))
+                    }
+                    placeholder="Weekend Special"
+                  />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>End Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !formState.endDate && "text-muted-foreground",
-                        )}
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={formState.description}
+                    onChange={(event) =>
+                      setFormState((current) => ({
+                        ...current,
+                        description: event.target.value,
+                      }))
+                    }
+                    rows={3}
+                    placeholder="Describe your promotion..."
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Start Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !formState.startDate && "text-muted-foreground",
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 size-4" />
+                          {formState.startDate
+                            ? format(formState.startDate, "PPP")
+                            : "Pick a date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={formState.startDate}
+                          onSelect={(date) =>
+                            setFormState((current) => ({
+                              ...current,
+                              startDate: date,
+                            }))
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>End Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !formState.endDate && "text-muted-foreground",
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 size-4" />
+                          {formState.endDate
+                            ? format(formState.endDate, "PPP")
+                            : "Pick a date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={formState.endDate}
+                          onSelect={(date) =>
+                            setFormState((current) => ({
+                              ...current,
+                              endDate: date,
+                            }))
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Discount Percentage</Label>
+                    <span className="text-lg font-bold text-primary">
+                      {formState.discountPercent}%
+                    </span>
+                  </div>
+                  <Slider
+                    value={[formState.discountPercent]}
+                    onValueChange={([value]) =>
+                      setFormState((current) => ({
+                        ...current,
+                        discountPercent: value,
+                      }))
+                    }
+                    min={0}
+                    max={100}
+                    step={1}
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <Label>Room Types</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {ROOM_TYPE_OPTIONS.map((roomType) => (
+                      <div
+                        key={roomType.value}
+                        className="flex items-center space-x-2"
                       >
-                        <CalendarIcon className="mr-2 size-4" />
-                        {formState.endDate
-                          ? format(formState.endDate, "PPP")
-                          : "Pick a date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={formState.endDate}
-                        onSelect={(date) =>
-                          setFormState((current) => ({
-                            ...current,
-                            endDate: date,
-                          }))
-                        }
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                        <Checkbox
+                          id={roomType.value}
+                          checked={formState.roomTypes.includes(roomType.value)}
+                          onCheckedChange={(checked) =>
+                            handleRoomTypeChange(
+                              roomType.value,
+                              checked === true,
+                            )
+                          }
+                        />
+                        <Label htmlFor={roomType.value} className="font-normal">
+                          {roomType.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Discount Percentage</Label>
-                  <span className="text-lg font-bold text-primary">
-                    {formState.discountPercent}%
-                  </span>
+                <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                  <div>
+                    <Label htmlFor="promotion-active">Active</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Visible to guests
+                    </p>
+                  </div>
+                  <Switch
+                    id="promotion-active"
+                    checked={formState.isActive}
+                    onCheckedChange={(checked) =>
+                      setFormState((current) => ({
+                        ...current,
+                        isActive: checked,
+                      }))
+                    }
+                  />
                 </div>
-                <Slider
-                  value={[formState.discountPercent]}
-                  onValueChange={([value]) =>
-                    setFormState((current) => ({
-                      ...current,
-                      discountPercent: value,
-                    }))
-                  }
-                  min={0}
-                  max={100}
-                  step={1}
-                />
-              </div>
 
-              <div className="space-y-3">
-                <Label>Room Types</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  {ROOM_TYPE_OPTIONS.map((roomType) => (
-                    <div
-                      key={roomType.value}
-                      className="flex items-center space-x-2"
-                    >
-                      <Checkbox
-                        id={roomType.value}
-                        checked={formState.roomTypes.includes(roomType.value)}
-                        onCheckedChange={(checked) =>
-                          handleRoomTypeChange(roomType.value, checked === true)
-                        }
-                      />
-                      <Label htmlFor={roomType.value} className="font-normal">
-                        {roomType.label}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                <div>
-                  <Label htmlFor="promotion-active">Active</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Visible to guests
-                  </p>
-                </div>
-                <Switch
-                  id="promotion-active"
-                  checked={formState.isActive}
-                  onCheckedChange={(checked) =>
-                    setFormState((current) => ({
-                      ...current,
-                      isActive: checked,
-                    }))
-                  }
-                />
-              </div>
-
-              <div className="flex gap-3">
-                <Button
-                  onClick={() => void handleSave()}
-                  disabled={isSaving}
-                  className="flex-1 bg-primary hover:bg-primary/90"
-                >
-                  {isSaving
-                    ? "Saving..."
-                    : editingPromotion
-                      ? "Update Promotion"
-                      : "Create Promotion"}
-                </Button>
-                {editingPromotion && (
+                <div className="flex gap-3">
                   <Button
-                    variant="outline"
-                    onClick={resetForm}
+                    onClick={() => void handleSave()}
                     disabled={isSaving}
+                    className="flex-1 bg-primary hover:bg-primary/90"
                   >
-                    Cancel
+                    {isSaving
+                      ? "Saving..."
+                      : editingPromotion
+                        ? "Update Promotion"
+                        : "Create Promotion"}
                   </Button>
-                )}
-              </div>
-            </CardContent>
+                  {editingPromotion && (
+                    <Button
+                      variant="outline"
+                      onClick={resetForm}
+                      disabled={isSaving}
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            ) : null}
           </Card>
 
           <Card>
