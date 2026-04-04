@@ -8,25 +8,25 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "ResortAI Admin Dashboard",
+  title: "Gezana Solution Admin Dashboard",
   description: "Resort Management System - AI Powered",
-  generator: "v0.app",
+  generator: "Gezana Solution",
   icons: {
     icon: [
       {
-        url: "/icon-light-32x32.png",
+        url: "/Gezana.jpg",
         media: "(prefers-color-scheme: light)",
       },
       {
-        url: "/icon-dark-32x32.png",
+        url: "/Gezana.jpg",
         media: "(prefers-color-scheme: dark)",
       },
       {
-        url: "/icon.svg",
-        type: "image/svg+xml",
+        url: "/Gezana.jpg",
+        type: "image/jpeg",
       },
     ],
-    apple: "/apple-icon.png",
+    apple: "/Gezana.jpg",
   },
 };
 
