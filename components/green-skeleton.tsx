@@ -1,26 +1,20 @@
-"use client"
+"use client";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 interface GreenSkeletonProps {
-  className?: string
+  className?: string;
 }
 
 export function GreenSkeleton({ className }: GreenSkeletonProps) {
   return (
-    <div
-      className={cn(
-        "animate-pulse rounded-md bg-primary/10",
-        className
-      )}
-    />
-  )
+    <div className={cn("animate-pulse rounded-md bg-primary/10", className)} />
+  );
 }
 
 export function DashboardSkeleton() {
   return (
     <div className="flex flex-col gap-6 p-4 lg:p-6">
-      {/* Header skeleton */}
       <div className="flex items-center gap-4">
         <GreenSkeleton className="h-8 w-48" />
       </div>
@@ -60,7 +54,7 @@ export function DashboardSkeleton() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 export function CardSkeleton() {
@@ -73,14 +67,17 @@ export function CardSkeleton() {
       <GreenSkeleton className="mt-4 h-8 w-20" />
       <GreenSkeleton className="mt-2 h-3 w-32" />
     </div>
-  )
+  );
 }
 
 export function TableSkeleton({ rows = 5 }: { rows?: number }) {
   return (
     <div className="space-y-3">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="flex items-center gap-4 rounded-lg border border-border p-3">
+        <div
+          key={i}
+          className="flex items-center gap-4 rounded-lg border border-border p-3"
+        >
           <GreenSkeleton className="size-10 rounded-full" />
           <div className="flex-1 space-y-2">
             <GreenSkeleton className="h-4 w-32" />
@@ -90,5 +87,5 @@ export function TableSkeleton({ rows = 5 }: { rows?: number }) {
         </div>
       ))}
     </div>
-  )
+  );
 }

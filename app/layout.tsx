@@ -2,19 +2,10 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/theme-provider";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryProvider } from "@/components/react-query-provider";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 10 * 60 * 1000, // 10 minutes
-      gcTime: 15 * 60 * 1000, // 15 minutes
-    },
-  },
-});
 
 export const metadata: Metadata = {
   title: "ResortAI Admin Dashboard",
@@ -47,7 +38,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
-        <QueryClientProvider client={queryClient}>
+        <ReactQueryProvider>
           <ThemeProvider
             attribute="class"
             defaultTheme="light"
@@ -56,7 +47,7 @@ export default function RootLayout({
           >
             {children}
           </ThemeProvider>
-        </QueryClientProvider>
+        </ReactQueryProvider>
         <Analytics />
       </body>
     </html>
